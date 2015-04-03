@@ -1,0 +1,47 @@
+
+## This is a release builder, launch it, then once it is finished
+## export/import the result to get a fixed object.
+
+FROM debian:jessie
+MAINTAINER Dean Serenevy <dean@serenevy.net>
+
+
+# CONFIGURATION
+#--------------
+VOLUME ["/opt/puppet"]
+
+
+# BUILDING
+#---------
+INCLUDE docker/00_prepare.docker
+INCLUDE docker/05_localenv.docker
+INCLUDE docker/10_setup.docker
+
+# MAIN
+#-----
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    puppetmaster-passenger
+
+COPY etc/puppet.conf /etc/puppet/puppet.conf
+
+# CLEANUP
+#--------
+INCLUDE docker/99_cleanup.docker
+
+
+# RUNNING
+#--------
+EXPOSE 8140
+
+ENV APACHE_RUN_USER      www-data
+ENV APACHE_RUN_GROUP     www-data
+ENV APACHE_LOG_DIR       /var/log/apache2
+ENV APACHE_PID_FILE      /var/run/apache2.pid
+ENV APACHE_RUN_DIR       /var/run/apache2
+ENV APACHE_LOCK_DIR      /var/lock/apache2
+ENV APACHE_SERVERADMIN   dean@serenevy.net
+ENV APACHE_SERVERNAME    puppet
+ENV APACHE_SERVERALIAS   puppet.machinemotion.com
+ENV APACHE_DOCUMENTROOT  /var/www
+
+CMD [ "/usr/sbin/apache2", "-DFOREGROUND" ]

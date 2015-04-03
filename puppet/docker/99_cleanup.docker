@@ -1,0 +1,14 @@
+
+RUN apt-get clean
+
+RUN rm -rf /tmp/* /var/tmp/*
+RUN rm -rf /var/lib/apt/lists/*
+
+RUN [ -z "$APT_PROXY_FILE" ]  ||  rm -f "$APT_PROXY_FILE"
+RUN [ -z "$APT_SPEEDUP"    ]  ||  rm -f "$APT_SPEEDUP"
+
+# We don't need no stinking dsocumentation!
+RUN rm -rf /usr/share/doc/*
+
+# Really bad idea to leave an ssh private key in the base image!
+RUN rm -f /etc/ssh/ssh_host_*
