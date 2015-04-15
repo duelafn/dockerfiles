@@ -14,15 +14,34 @@ VOLUME ["/opt/puppet"]
 # BUILDING
 #---------
 INCLUDE docker/00_prepare.docker
+
+ENV UID_PUPPET 200
+ENV GID_PUPPET 200
+
 INCLUDE docker/05_localenv.docker
 INCLUDE docker/10_setup.docker
 
 # MAIN
 #-----
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    puppetmaster-passenger
+RUN addgroup --gid $GID_PUPPET puppet
+RUN adduser --system        \
+    --home /var/lib/puppet  \
+    --shell /bin/false      \
+    --no-create-home        \
+    --uid $UID_PUPPET       \
+    --gid $GID_PUPPET       \
+    --disabled-password     \
+    --disabled-login        \
+    puppet
 
-COPY etc/puppet.conf /etc/puppet/puppet.conf
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    puppet-module-puppetlabs-inifile \
+    puppet-module-puppetlabs-stdlib  \
+    puppetmaster-passenger           \
+    ruby-rgen
+
+RUN rm -f /etc/puppet/puppet.conf                        && ln -s /opt/puppet/etc/puppet.conf                           /etc/puppet/puppet.conf
+RUN rm -f /etc/apache2/sites-enabled/puppetmaster.conf   && ln -s /opt/puppet/extra/apache2/puppetmaster-passenger.conf /etc/apache2/sites-enabled/puppetmaster.conf
 
 # CLEANUP
 #--------

@@ -12,11 +12,12 @@ Dockerfile: Dockerfile.in docker/* ${LOCALENV}
 
 build: Dockerfile
 	docker build --rm -t ${CONTAINER} .
-	docker images | perl -ne'print if 1==$$. or /${CONTAINER}/'
+	docker images | perl -ne'print if 1==$$. or m#${CONTAINER}#'
 
-commit: bump_revision
-	docker build --rm -t ${REPOSITORY}:r$$(cat revision) .
-	docker images | perl -ne'print if 1==$$. or /${REPOSITORY}/'
+commit: build bump_revision
+	docker tag -f ${CONTAINER} ${REPOSITORY}:latest
+	docker tag -f ${CONTAINER} ${REPOSITORY}:r$$(cat revision)
+	docker images | perl -ne'print if 1==$$. or m#${REPOSITORY}#'
 
 ${LOCALENV}:
 	touch ${LOCALENV}

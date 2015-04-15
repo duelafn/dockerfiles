@@ -1,0 +1,16 @@
+[Unit]
+Description=Puppet3 Server
+Requires=docker.service
+After=docker.service
+
+[Service]
+Restart=always
+RestartForceExitStatus=1
+RestartSec=10
+ExecStartPre=-/usr/bin/docker kill puppet3
+ExecStartPre=-/usr/bin/docker rm puppet3
+ExecStart=/usr/bin/docker run --rm -h puppet.machinemotion.com -v /opt/puppet:/opt/puppet -p 127.0.0.1:8140:8140 --name puppet3 cmminc/puppetmaster:latest
+ExecStop=-/usr/bin/docker stop puppet3
+
+[Install]
+WantedBy=multi-user.target
