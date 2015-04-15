@@ -1,0 +1,31 @@
+
+
+ | USER     | GROUP    |  UID |  GID |
+ |----------+----------+------+------|
+ | www-data | www-data |   33 |   33 |
+ |----------+----------+------+------|
+ | puppet   | puppet   |  200 |  200 |
+ | mysql    | mysql    |  201 |  201 |
+ | git      | git      | 2002 | 2002 |
+ |----------+----------+------+------|
+
+
+docker run -d -h nickel.machinemotion.com -v /opt/mariadb:/opt/mariadb -p 127.0.0.1:3306:3306 mariadb
+
+
+https://registry.hub.docker.com/_/mariadb/
+https://registry.hub.docker.com/_/nginx/
+https://registry.hub.docker.com/_/postgres/
+https://registry.hub.docker.com/u/sameersbn/redmine/
+
+
+Systemd
+=======
+
+Copy or create .service files in /etc/systemd/system/
+
+    systemctl daemon-reload
+
+    systemctl start docker-foo
+
+See also: https://goldmann.pl/blog/2014/07/30/running-docker-containers-as-systemd-services/
