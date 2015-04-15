@@ -1,0 +1,16 @@
+[Unit]
+Description=Timeclock
+Requires=docker.service timeclock-data.service
+After=docker.service timeclock-data.service
+
+[Service]
+Restart=always
+RestartForceExitStatus=1
+RestartSec=10
+ExecStartPre=-/usr/bin/docker kill timeclock
+ExecStartPre=-/usr/bin/docker rm timeclock
+ExecStart=/usr/bin/docker run --rm -h timeclock.machinemotion.com -v /opt/timeclock:/opt/timeclock -p 127.0.0.1:3880:80 --name timeclock --link timeclock-data:timeclock-data cmminc/timeclock:latest
+ExecStop=-/usr/bin/docker stop timeclock
+
+[Install]
+WantedBy=multi-user.target
