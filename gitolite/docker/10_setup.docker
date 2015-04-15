@@ -1,0 +1,23 @@
+
+
+RUN [ -z "$TIME_ZONE" ]  ||  echo "$TIME_ZONE" > /etc/timezone  ||  dpkg-reconfigure -f noninteractive tzdata
+
+## Temporarily disable dpkg fsync to make building faster.
+RUN [ -z "$APT_SPEEDUP" ]  ||  echo force-unsafe-io > "$APT_SPEEDUP"
+
+## Proxy when appropriate.
+RUN [ -z "$APT_PROXY_FILE" ]  ||  [ -z "$APT_PROXY" ]  ||  echo "Acquire::http::Proxy \"$APT_PROXY\";" > "$APT_PROXY_FILE"
+
+## Prevent initramfs updates from trying to run grub and lilo.
+## https://journal.paul.querna.org/articles/2013/10/15/docker-ubuntu-on-rackspace/
+## http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=594189
+ENV INITRD no
+RUN mkdir -p /etc/container_environment
+RUN echo -n no > /etc/container_environment/INITRD
+
+## Replace the 'ischroot' tool to make it always return true.
+## Prevent initscripts updates from breaking /dev/shm.
+## https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=685034
+## Yes, the bug is old, but part of the problem is broken callers :(
+RUN dpkg-divert --local --rename --add /usr/bin/ischroot
+RUN ln -sf /bin/true /usr/bin/ischroot
