@@ -1,0 +1,49 @@
+
+## This is a release builder, launch it, then once it is finished
+## export/import the result to get a fixed object.
+
+FROM debian:jessie
+MAINTAINER Dean Serenevy <dean@serenevy.net>
+
+
+# CONFIGURATION
+#--------------
+VOLUME ["/opt/mariadb"]
+
+
+# BUILDING
+#---------
+INCLUDE docker/00_prepare.docker
+
+ENV UID_MARIADB 201
+ENV GID_MARIADB 201
+
+INCLUDE docker/05_localenv.docker
+INCLUDE docker/10_setup.docker
+
+# MAIN
+#-----
+RUN addgroup --gid $GID_MARIADB mysql
+RUN adduser --system        \
+    --home /var/lib/mysql   \
+    --shell /bin/false      \
+    --no-create-home        \
+    --uid $UID_MARIADB      \
+    --gid $GID_MARIADB      \
+    --disabled-password     \
+    --disabled-login        \
+    mysql
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    mariadb-server
+
+# CLEANUP
+#--------
+INCLUDE docker/99_cleanup.docker
+
+
+# RUNNING
+#--------
+EXPOSE 3306
+
+CMD [ "/usr/bin/mysqld_safe", "--datadir=/opt/mariadb", "--port=3306", "--bind-address=0.0.0.0", "--innodb-file-per-table", "--default-storage-engine=InnoDB" ]
