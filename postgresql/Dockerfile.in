@@ -1,0 +1,58 @@
+
+## This is a release builder, launch it, then once it is finished
+## export/import the result to get a fixed object.
+
+FROM debian:jessie
+MAINTAINER Dean Serenevy <dean@serenevy.net>
+
+
+# CONFIGURATION
+#--------------
+VOLUME ["/opt/postgresql"]
+
+
+# BUILDING
+#---------
+INCLUDE ../_includes/00_prepare.docker
+
+ENV UID_POSTGRES 202
+ENV GID_POSTGRES 202
+ENV PGHOST /opt/postgresql
+
+INCLUDE ../_includes/05_localenv.docker
+INCLUDE ../_includes/10_setup.docker
+
+# MAIN
+#-----
+RUN groupadd -g $GID_POSTGRES postgres
+RUN useradd --system                         \
+    --home /opt/postgresql                   \
+    --shell /bin/sh                          \
+    -M                                       \
+    --uid $UID_POSTGRES                      \
+    --gid $GID_POSTGRES                      \
+    --comment "PostgreSQL administrator,,,"  \
+    postgres
+
+RUN apt-get install -y --no-install-recommends \
+    postgresql
+
+RUN pg_dropcluster $(pg_lsclusters | tail -n 1 | awk '{print$1" "$2}')
+
+RUN install -d -m 2775 -o postgres -g postgres /var/run/postgresql
+RUN install -d -m 0775 -o postgres -g postgres /etc/postgresql
+
+COPY run_postgres /usr/local/bin/run_postgres
+
+# CLEANUP
+#--------
+INCLUDE ../_includes/99_cleanup.docker
+
+
+# RUNNING
+#--------
+EXPOSE 5432
+USER postgres
+WORKDIR /opt/postgresql
+
+CMD /usr/local/bin/run_postgres

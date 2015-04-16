@@ -1,0 +1,44 @@
+#!/bin/bash
+
+AUTODETECT_VERSION=$(dpkg -l | perl -nE 'say $1 and exit if /^ii\s+postgresql\-([\d.]+)\s+/')
+VER=${POSTGRESQL_VERSION:-$AUTODETECT_VERSION}
+CLUST=${POSTGRESQL_CLUSTER:-main}
+
+VOL="/opt/postgresql"
+CONFDIR="$VOL/conf/$VER/$CLUST"
+DATADIR="$VOL/data/$VER/$CLUST"
+
+if [ -f "$CONFDIR/postgresql.conf" ]; then
+    CONFIG="$CONFDIR/postgresql.conf"
+else
+    CONFIG="/etc/postgresql/$VER/main/postgresql.conf"
+fi
+
+if [ -f "$CONFDIR/pg_hba.conf" ]; then
+    HBA="$CONFDIR/pg_hba.conf"
+else
+    HBA="/etc/postgresql/$VER/main/pg_hba.conf"
+fi
+
+if [ -f "$CONFDIR/pg_ident.conf" ]; then
+    IDENT="$CONFDIR/pg_ident.conf"
+else
+    IDENT="/etc/postgresql/$VER/main/pg_ident.conf"
+fi
+
+if ([ ! -d "$DATADIR" ] || find "$DATADIR" -maxdepth 0 -empty | grep -q .); then
+    mkdir -p "$VOL/log"
+    pg_createcluster --datadir="$DATADIR" --socketdir="$VOL" --logfile="$VOL/log/postgresql-$VER-$CLUST.log" "$VER" "$CLUST"
+    mkdir -p "/var/run/postgresql/$VER-$CLUST.pg_stat_tmp"
+    if [ ! -d "$CONFDIR" ]; then
+        mkdir -p "$CONFDIR"
+        cp -a "/etc/postgresql/$VER/$CLUST"/{postgresql.conf,pg_hba.conf,pg_ident.conf} "$CONFDIR/"
+    fi
+fi
+
+/usr/lib/postgresql/$VER/bin/postgres  \
+    -D "$DATADIR"                      \
+    -c config_file="$CONFIG"           \
+    -c hba_file="$HBA"                 \
+    -c ident_file="$IDENT"             \
+    -c external_pid_file="/var/run/postgresql/$VER-$CLUST.pid"
