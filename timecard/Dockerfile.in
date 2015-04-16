@@ -13,9 +13,9 @@ VOLUME ["/opt/timeclock"]
 
 # BUILDING
 #---------
-INCLUDE docker/00_prepare.docker
-INCLUDE docker/05_localenv.docker
-INCLUDE docker/10_setup.docker
+INCLUDE ../_includes/00_prepare.docker
+INCLUDE ../_includes/05_localenv.docker
+INCLUDE ../_includes/10_setup.docker
 
 # MAIN
 #-----
@@ -34,7 +34,7 @@ RUN sed -i '/^;\?date\.timezone/cdate.timezone = "'$TIME_ZONE'"' /etc/php5/apach
 
 # CLEANUP
 #--------
-INCLUDE docker/99_cleanup.docker
+INCLUDE ../_includes/99_cleanup.docker
 
 
 # RUNNING

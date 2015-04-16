@@ -13,13 +13,13 @@ VOLUME ["/opt/mariadb"]
 
 # BUILDING
 #---------
-INCLUDE docker/00_prepare.docker
+INCLUDE ../_includes/00_prepare.docker
 
 ENV UID_MARIADB 201
 ENV GID_MARIADB 201
 
-INCLUDE docker/05_localenv.docker
-INCLUDE docker/10_setup.docker
+INCLUDE ../_includes/05_localenv.docker
+INCLUDE ../_includes/10_setup.docker
 
 # MAIN
 #-----
@@ -39,7 +39,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # CLEANUP
 #--------
-INCLUDE docker/99_cleanup.docker
+INCLUDE ../_includes/99_cleanup.docker
 
 
 # RUNNING

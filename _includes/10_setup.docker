@@ -21,3 +21,7 @@ RUN echo -n no > /etc/container_environment/INITRD
 ## Yes, the bug is old, but part of the problem is broken callers :(
 RUN dpkg-divert --local --rename --add /usr/bin/ischroot
 RUN ln -sf /bin/true /usr/bin/ischroot
+
+# So many things require a correct locale, we might as well install it
+# locale.gen was modified, regenerate locales
+RUN apt-get update && apt-get install locales

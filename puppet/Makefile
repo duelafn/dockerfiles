@@ -1,5 +1,5 @@
 
-LOCALENV=docker/05_localenv.docker
+LOCALENV=../_includes/05_localenv.docker
 CONTAINER=puppetmaster
 REPOSITORY=cmminc/puppetmaster
 
@@ -7,7 +7,7 @@ REPOSITORY=cmminc/puppetmaster
 .PHONY: bump_revision build
 
 
-Dockerfile: Dockerfile.in docker/* ${LOCALENV}
+Dockerfile: Dockerfile.in ../_includes/* ${LOCALENV}
 	perl -MFile::Slurp -ne 'print /^INCLUDE\s*(.*)/ ? read_file("$$1") : $$_' $< >$@
 
 build: Dockerfile

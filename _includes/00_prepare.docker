@@ -13,3 +13,9 @@ ENV APT_PROXY_FILE /etc/apt/apt.conf.d/90_apt-cacher_proxy
 # friends. This is our default. It can be overridden in command line or
 # 05_localenv.docker.
 ENV TIME_ZONE America/Indiana/Indianapolis
+
+# Make C-l work
+ENV TERM linux
+
+# Need some base locales (append any others in 05_localenv,docker)
+RUN echo "en_US ISO-8859-1" >/etc/locale.gen && echo "en_US.UTF-8 UTF-8" >>/etc/locale.gen

@@ -13,14 +13,14 @@ VOLUME ["/opt/git"]
 
 # BUILDING
 #---------
-INCLUDE docker/00_prepare.docker
+INCLUDE ../_includes/00_prepare.docker
 
 ENV UID_GIT 2002
 ENV GID_GIT 2002
 ENV SSH_SERVER_DIR /opt/git/ssh_server
 
-INCLUDE docker/05_localenv.docker
-INCLUDE docker/10_setup.docker
+INCLUDE ../_includes/05_localenv.docker
+INCLUDE ../_includes/10_setup.docker
 
 # MAIN
 #-----
@@ -45,7 +45,7 @@ RUN mkdir /var/run/sshd
 
 # CLEANUP
 #--------
-INCLUDE docker/99_cleanup.docker
+INCLUDE ../_includes/99_cleanup.docker
 
 
 # RUNNING
