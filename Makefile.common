@@ -1,0 +1,55 @@
+
+
+.PHONY: build check-name
+.PHONY: bump_revision commit
+.PHONY: bump_update upgrade force-upgrade
+
+
+Dockerfile: Dockerfile.in ../_includes/* ${LOCALENV}
+	perl -MFile::Slurp -ne 'print /^INCLUDE\s*(.*)/ ? read_file("$$1") : $$_' $< >$@
+
+build: Dockerfile
+	docker build --rm -t ${CONTAINER} .
+	docker images | perl -ne'print if 1==$$. or m#${CONTAINER}#'
+
+commit: build bump_revision
+	docker tag -f ${CONTAINER} ${REPOSITORY}:latest
+	docker tag -f ${CONTAINER} ${REPOSITORY}:r$$(cat revision)
+	docker images | perl -ne'print if 1==$$. or m#${REPOSITORY}#'
+
+upgrade: check-name
+	docker exec -it ${NAME} sh -c 'apt-get update && apt-get -u dist-upgrade --assume-no' | grep -q 'Do you want to continue'
+	$(MAKE) force-upgrade
+
+force-upgrade:
+	$(MAKE) bump_update
+	docker build -q --rm --no-cache=true -t ${CONTAINER} .
+	docker tag -f ${CONTAINER} ${REPOSITORY}:latest
+	docker tag -f ${CONTAINER} ${REPOSITORY}:r$$(cat revision).$$(cat update)
+	docker images | perl -ne'print if 1==$$. or m#${REPOSITORY}#'
+
+check-name:
+ifndef NAME
+	$(error NAME is undefined)
+endif
+
+${LOCALENV}:
+	touch ${LOCALENV}
+
+revision:
+	echo 0 > revision
+
+update:
+	echo 0 > update
+
+bump_revision: revision
+	expr 1 + $$(cat revision) > revision
+	rm -f update
+
+bump_update: update
+	expr 1 + $$(cat update) > update
+
+
+### Local Variables:
+### mode: makefile
+### End:
