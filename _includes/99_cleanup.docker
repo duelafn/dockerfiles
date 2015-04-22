@@ -11,4 +11,4 @@ RUN [ -z "$APT_SPEEDUP"    ]  ||  rm -f "$APT_SPEEDUP"
 RUN rm -rf /usr/share/doc/*
 
 # Really bad idea to leave an ssh private key in the base image!
-RUN if [ -z "$SSH_SERVER_DIR" ]; then rm -f /etc/ssh/ssh_host_*; else rm -rf /etc/ssh ; ln -s "$SSH_SERVER_DIR" /etc/ssh; fi
+RUN if [ -z "$SSH_SERVER_DIR" ]; then rm -f /etc/ssh/ssh_host_*; else cp /etc/ssh/sshd_config /etc/sshd_config.dpkg-dist ; rm -rf /etc/ssh ; ln -s "$SSH_SERVER_DIR" /etc/ssh; fi

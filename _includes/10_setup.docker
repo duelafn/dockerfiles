@@ -23,5 +23,4 @@ RUN dpkg-divert --local --rename --add /usr/bin/ischroot
 RUN ln -sf /bin/true /usr/bin/ischroot
 
 # So many things require a correct locale, we might as well install it
-# locale.gen was modified, regenerate locales
-RUN apt-get update && apt-get install locales
+RUN apt-get update && apt-get install locales less
