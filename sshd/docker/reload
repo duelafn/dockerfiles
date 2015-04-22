@@ -1,0 +1,3 @@
+#!/bin/sh
+/docker/reload_users
+/bin/kill -HUP 1

@@ -1,0 +1,16 @@
+#!/bin/sh
+VERSION='0.1.0';# Created: 2015-04-22
+set -o nounset     # Die if any variable is unset
+set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+
+mkdir -p "$SSH_SERVER_DIR" "$PASSWD_DIR"
+
+# Ensure we have SSH host keys
+[ -f "$SSH_SERVER_DIR/sshd_config" ]          || cp /etc/sshd_config.dpkg-dist "$SSH_SERVER_DIR/sshd_config"
+[ -f "$SSH_SERVER_DIR/ssh_host_rsa_key.pub" ] || dpkg-reconfigure openssh-server
+
+# Reload users
+/docker/reload_users
+
+set +o nounset
+exec /usr/sbin/sshd -D $SSHD_OPTS

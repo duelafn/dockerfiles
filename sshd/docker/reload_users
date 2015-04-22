@@ -1,0 +1,39 @@
+#!/usr/bin/perl
+use warnings;
+use strict;
+
+merge_pwfiles("/etc/group",  "$ENV{PASSWD_DIR}/group");
+merge_pwfiles("/etc/passwd", "$ENV{PASSWD_DIR}/passwd");
+merge_pwfiles("/etc/shadow", "$ENV{PASSWD_DIR}/shadow");
+
+sub merge_pwfiles {
+    my $file = shift;
+    my $order = [];
+    my $lines = {};
+    read_pwfile($order, $lines, $file);
+    for (@_) {
+        next unless -f $_;
+        read_pwfile($order, $lines, $_);
+    }
+    write_pwfile($order, $lines, $file);
+}
+
+sub read_pwfile {
+    my ($order, $lines, $file) = @_;
+    open my $F, "<", $file or die "Error reading $file: $!";
+    for (<$F>) {
+        my ($name) = split /:/;
+        push @$order, $name unless exists $$lines{$name};
+        $$lines{$name} = $_;
+    }
+}
+
+sub write_pwfile {
+    my ($order, $lines, $file) = @_;
+    {
+        open my $F, ">", "$file.new" or die "Error writing $file.new: $!";
+        print $F $$lines{$_} for @$order;
+        close $F;
+    }
+    rename "$file.new", $file;
+}

@@ -1,0 +1,43 @@
+
+## This is a release builder, launch it, then once it is finished
+## export/import the result to get a fixed object.
+
+FROM debian:jessie
+MAINTAINER Dean Serenevy <dean@serenevy.net>
+
+
+# CONFIGURATION
+#--------------
+VOLUME ["/opt/proxy"]
+
+
+# BUILDING
+#---------
+INCLUDE ../_includes/00_prepare.docker
+
+ENV PASSWD_DIR     /opt/proxy/etc
+ENV SSH_SERVER_DIR /opt/proxy/etc/ssh
+
+INCLUDE ../_includes/05_localenv.docker
+INCLUDE ../_includes/10_setup.docker
+
+
+# MAIN
+#-----
+RUN  apt-get update && apt-get install -y --no-install-recommends \
+     ssh
+
+RUN  mkdir -p /var/run/sshd
+COPY docker /docker
+
+
+# CLEANUP
+#--------
+INCLUDE ../_includes/99_cleanup.docker
+
+
+# RUNNING
+#--------
+EXPOSE 22
+
+CMD exec /docker/run
