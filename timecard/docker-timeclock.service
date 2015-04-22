@@ -1,7 +1,7 @@
 [Unit]
 Description=Timeclock
-Requires=docker.service timeclock-data.service
-After=docker.service timeclock-data.service
+Requires=docker.service docker-timeclock-data.service
+After=docker.service docker-timeclock-data.service
 
 [Service]
 Restart=always

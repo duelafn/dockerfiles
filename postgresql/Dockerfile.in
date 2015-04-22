@@ -34,7 +34,7 @@ RUN useradd --system                         \
     --comment "PostgreSQL administrator,,,"  \
     postgres
 
-RUN apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql
 
 RUN pg_dropcluster $(pg_lsclusters | tail -n 1 | awk '{print$1" "$2}')
