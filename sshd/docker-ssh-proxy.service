@@ -9,7 +9,7 @@ RestartForceExitStatus=1
 RestartSec=10
 ExecStartPre=-/usr/bin/docker kill ssh-proxy
 ExecStartPre=-/usr/bin/docker rm ssh-proxy
-ExecStart=/usr/bin/docker run --rm -h proxy.machinemotion.com -v /opt/proxy:/opt/proxy -p 162.17.32.3:22:22 --name ssh-proxy cmminc/ssh-proxy:latest
+ExecStart=/usr/bin/docker run --rm -h proxy.machinemotion.com -v /opt/proxy:/opt/sshd -p 162.17.32.3:22:22 -p 162.17.32.3:2222:2222 --name ssh-proxy cmminc/sshd:latest
 ExecReload=-/usr/bin/docker exec ssh-proxy /docker/reload
 ExecStop=-/usr/bin/docker stop ssh-proxy
 

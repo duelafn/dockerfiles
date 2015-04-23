@@ -8,15 +8,15 @@ MAINTAINER Dean Serenevy <dean@serenevy.net>
 
 # CONFIGURATION
 #--------------
-VOLUME ["/opt/proxy"]
+VOLUME ["/opt/sshd"]
 
 
 # BUILDING
 #---------
 INCLUDE ../_includes/00_prepare.docker
 
-ENV PASSWD_DIR     /opt/proxy/etc
-ENV SSH_SERVER_DIR /opt/proxy/etc/ssh
+ENV PASSWD_DIR     /opt/sshd/etc
+ENV SSH_SERVER_DIR /opt/sshd/etc/ssh
 
 INCLUDE ../_includes/05_localenv.docker
 INCLUDE ../_includes/10_setup.docker
