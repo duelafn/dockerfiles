@@ -25,6 +25,7 @@ INCLUDE ../_includes/10_setup.docker
 # MAIN
 #-----
 RUN  apt-get update && apt-get install -y --no-install-recommends \
+     rsync  \
      ssh
 
 RUN  mkdir -p /var/run/sshd
