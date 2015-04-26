@@ -34,7 +34,7 @@ need to specify host name and volumes, no need to export the service yet):
     docker run --rm                  \
         -h puppet.machinemotion.com  \
         -v /opt/puppet:/opt/puppet   \
-        cmminc/puppetmaster:latest   \
+        duelafn/puppetmaster:latest   \
         puppet master --verbose --no-daemonize
 
 Press Control-C to stop the server once the certificates are generated.
