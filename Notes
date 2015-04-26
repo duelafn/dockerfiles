@@ -4,10 +4,11 @@
  |------------------+------------------+------+------|
  | www-data         | www-data         |   33 |   33 |
  |------------------+------------------+------+------|
- | puppet           | puppet           |  200 |  200 |
- | puppet-dashboard | puppet-dashboard |  203 |  203 |
  | mysql            | mysql            |  201 |  201 |
  | postgres         | postgres         |  202 |  202 |
+ | puppet           | puppet           |  200 |  200 |
+ | puppet-dashboard | puppet-dashboard |  203 |  203 |
+ | redis            | redis            |  204 |  204 |
  | git              | git              | 2002 | 2002 |
  |------------------+------------------+------+------|
 
