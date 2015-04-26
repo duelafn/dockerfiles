@@ -1,0 +1,15 @@
+#!/bin/sh
+VERSION='0.1.0';# Created: 2015-04-22
+set -o nounset     # Die if any variable is unset
+set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+
+ETC_DIR=/opt/redis/etc
+LOG_DIR=/opt/redis/log
+DATA_DIR=/opt/redis/data
+
+install -d -o redis -g redis "$ETC_DIR" "$LOG_DIR" "$DATA_DIR"
+
+# Ensure we have reasonable config
+[ -f "$ETC_DIR/redis.conf" ] || install -o redis -g redis /etc/redis/redis.conf "$ETC_DIR/redis.conf"
+
+exec sudo -u redis /usr/bin/redis-server "$ETC_DIR/redis.conf"

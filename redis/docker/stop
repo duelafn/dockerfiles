@@ -1,0 +1,2 @@
+#!/bin/sh
+sudo -u redis /usr/bin/redis-cli shutdown

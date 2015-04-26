@@ -1,0 +1,60 @@
+
+## This is a release builder, launch it, then once it is finished
+## export/import the result to get a fixed object.
+
+FROM debian:jessie
+MAINTAINER Dean Serenevy <dean@serenevy.net>
+
+
+# CONFIGURATION
+#--------------
+VOLUME ["/opt/redis"]
+
+
+# BUILDING
+#---------
+INCLUDE ../_includes/00_prepare.docker
+
+ENV UID_REDIS 204
+ENV GID_REDIS 204
+
+INCLUDE ../_includes/05_localenv.docker
+INCLUDE ../_includes/10_setup.docker
+
+
+# MAIN
+#-----
+RUN addgroup --gid $GID_REDIS redis
+RUN adduser                     \
+    --home /opt/redis           \
+    --no-create-home            \
+    --shell /bin/sh             \
+    --uid $UID_REDIS            \
+    --gid $GID_REDIS            \
+    --gecos "Redis Server,,,"   \
+    --disabled-password         \
+    --disabled-login            \
+    redis
+
+RUN  apt-get update && apt-get install -y --no-install-recommends \
+     redis-server   \
+     sudo
+
+RUN sed -i '/^daemonize\s/cdaemonize no'                           /etc/redis/redis.conf
+RUN sed -i '/^bind\s/d'                                            /etc/redis/redis.conf
+RUN sed -i '/^dir\s/cdir /opt/redis/data'                          /etc/redis/redis.conf
+RUN sed -i '/^logfile\s/clogfile /opt/redis/log/redis-server.log'  /etc/redis/redis.conf
+
+COPY docker /docker
+
+
+# CLEANUP
+#--------
+INCLUDE ../_includes/99_cleanup.docker
+
+
+# RUNNING
+#--------
+EXPOSE 6379
+
+CMD exec /docker/run
