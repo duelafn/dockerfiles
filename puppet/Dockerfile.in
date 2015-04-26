@@ -43,6 +43,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN rm -f /etc/puppet/puppet.conf                        && ln -s /opt/puppet/etc/puppet.conf                           /etc/puppet/puppet.conf
 RUN rm -f /etc/apache2/sites-enabled/puppetmaster.conf   && ln -s /opt/puppet/extra/apache2/puppetmaster-passenger.conf /etc/apache2/sites-enabled/puppetmaster.conf
 
+COPY docker /docker
+
 # CLEANUP
 #--------
 INCLUDE ../_includes/99_cleanup.docker
@@ -52,15 +54,4 @@ INCLUDE ../_includes/99_cleanup.docker
 #--------
 EXPOSE 8140
 
-ENV APACHE_RUN_USER      www-data
-ENV APACHE_RUN_GROUP     www-data
-ENV APACHE_LOG_DIR       /var/log/apache2
-ENV APACHE_PID_FILE      /var/run/apache2.pid
-ENV APACHE_RUN_DIR       /var/run/apache2
-ENV APACHE_LOCK_DIR      /var/lock/apache2
-ENV APACHE_SERVERADMIN   dean@serenevy.net
-ENV APACHE_SERVERNAME    puppet
-ENV APACHE_SERVERALIAS   puppet.machinemotion.com
-ENV APACHE_DOCUMENTROOT  /var/www
-
-CMD [ "/usr/sbin/apache2", "-DFOREGROUND" ]
+CMD exec /docker/run
