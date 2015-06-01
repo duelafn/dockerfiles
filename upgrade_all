@@ -7,14 +7,24 @@ use Getopt::Long qw/:config bundling/;
 use Hash::Util qw/ lock_keys /;
 our $VERSION = '0.1.0';# Created: 2015-04-22
 
-our %OPT = ( basedir => "/home/deans/docker" );
+our %OPT = (
+    basedir      => "/home/deans/docker",
+    basedir_user => "deans",
+);
 our @OPT_SPEC =
 qw/ help|h version noact|no-act|dry-run DEBUG
     basedir=s
+    restart
   /;
 sub USAGE { <<"__USAGE__" };
 usage: $_[0] [options]
 __USAGE__
+
+sub setup {
+    my $OPT = shift;
+    die "basedir must be absolute\n"   unless $$OPT{basedir} =~ m#^/#;
+    die "must run as root for --restart\n" if $$OPT{restart} and $<;
+}
 
 use Cwd qw/ chdir /;
 
@@ -25,29 +35,47 @@ MAIN(\%OPT, @ARGV);
 sub MAIN {
     # Test each image for needed upgrades: DIRECTORY, TEST_IMAGE_NAME
     # Order irrelevant here.
-    my $mariadb   = build_upgrade("mariadb",  "timeclock-data");
-    my $timeclock = build_upgrade("timecard", "timeclock");
-    my $puppet3   = build_upgrade("puppet",   "puppet3");
-    my $gitolite  = build_upgrade("gitolite", "gitolite");
-    my $sshd      = build_upgrade("sshd",     "ssh-proxy");
+    ## docker ps | perl -nE 'say qq[build_upgrade("$1", "$2");] if m#cmminc/([^:\s]+).*\s([\w-]+)\s*$#' | sort
+    my $gitolite          =                    build_upgrade("gitolite", "gitolite");
+    my $mariadb_ticket    =                    build_upgrade("mariadb",  "osticket-data");
+    my $mariadb_timeclock = $mariadb_ticket || build_upgrade("mariadb",  "timeclock-data");
+    my $osticket_cmm      =                    build_upgrade("osticket", "osticket");
+    my $puppet3           =                    build_upgrade("puppet",   "puppet3");
+    my $redis             =                    build_upgrade("redis",    "redis");
+    my $sshd_backup       =                    build_upgrade("sshd",     "ssh-backup");
+    my $sshd_proxy        = $sshd_backup    || build_upgrade("sshd",     "ssh-proxy");
+    my $timeclock         =                    build_upgrade("timecard", "timeclock");
 
-    # Now restart services if any dependencies have changed
-    # Order matters here!
-    restart("docker-timeclock-data", $mariadb);
-    restart("docker-timeclock",      $mariadb, $timeclock);
-    restart("docker-puppet3",        $puppet3);
-    restart("docker-gitolite",       $gitolite);
-    restart("docker-ssh-proxy",      $sshd);
+    if ($OPT{restart}) {
+        # Now restart services if any dependencies have changed
+        # Order matters here!
+        restart("docker-gitolite",       $gitolite);
+        restart("docker-osticket-data",  $mariadb_ticket);
+        restart("docker-timeclock-data", $mariadb_timeclock);
+        restart("docker-osticket",       $mariadb_ticket, $osticket_cmm);
+        restart("docker-puppet3",        $puppet3);
+        restart("docker-redis",          $redis);
+        restart("docker-ssh-backup",     $sshd_backup);
+        restart("docker-ssh-proxy",      $sshd_proxy);
+        restart("docker-timeclock",      $mariadb_timeclock, $timeclock);
+    }
 }
 
 # Return true if an upgrade succeeded.
 sub build_upgrade {
     my ($dir, $name) = @_;
-    chdir "$OPT{basedir}/$dir";
-    return (0 == system(make => upgrade => "NAME=$name"));
+    my $cb = sub {
+        chdir "$OPT{basedir}/$dir";
+        return (0 == system(make => upgrade => "NAME=$name"));
+    };
+    if ($<) {# non-root
+        return $cb->();
+    } else {
+        return do_as($OPT{basedir_user} => $cb);
+    }
 }
 
-# Restart the service if any delendencies were updated.
+# Restart the service if any dependencies were updated.
 sub restart {
     my $service = shift;
     system systemctl => restart => $service if grep $_, @_;
@@ -58,7 +86,7 @@ sub get_options {
     my $OPT = shift;
     GetOptions $OPT, @_ or usage(1);
     usage() if $$OPT{help} || $$OPT{version};
-    die "basedir must be absolute\n" unless $$OPT{basedir} =~ m#^/#;
+    setup($OPT);
     lock_keys(%$OPT, keys %$OPT, map /^(\w+)/, @_);
 }
 
@@ -70,3 +98,40 @@ sub usage {
     print $OPT{version} ? "$exe version $VERSION\n" : USAGE($exe);
     exit $status;
 }
+
+
+
+=head3 do_as
+
+ do_as "username", sub { ... };
+ do_as "username:groupname", sub { ... };
+
+Locally change the effective user id and execute some code. Only works if
+current user is root!
+
+Ensures that $ENV{USER} and $ENV{HOME} are set appropriately. Will
+eventually include options which will attempt to setup DISPLAY, DBUS,
+XAUTH, SSH_AGENT, GPG_AGENT, and other variables useful for running and
+connecting to existing X sessions, apps, and daemons of the user.
+
+=cut
+
+#BEGIN: do_as
+sub do_as {
+  my $func = pop;
+  my ($user, %opt) = @_;
+  my $group = ($user =~ s/:(.*)//) ? $1 : "";
+
+  my (undef,undef,$uid,$gid,$quota,$comment,$gcos,$dir) = getpwnam($user);
+  $gid = getgrnam($group) if $group;
+  die unless defined($uid) and defined($gid);
+  local %ENV = %ENV;
+
+  $! = 0; local $) = $gid; die "Can't set gid: $!" if 0+$!;
+  $! = 0; local $> = $uid; die "Can't set uid: $!" if 0+$!;
+  $ENV{USER} = $user;
+  $ENV{HOME} = $dir;
+
+  return $func->();
+}
+#END: do_as
