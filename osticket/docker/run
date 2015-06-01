@@ -1,0 +1,55 @@
+#!/bin/bash
+VERSION='0.1.0';# Created: 2015-05-20
+set -o nounset     # Die if any variable is unset
+set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+
+ETC_DIR=/opt/osticket/etc
+LOG_DIR=/opt/osticket/log
+# DATA_DIR=/opt/osticket/data
+SRC_DIR=/opt/osticket/src
+WWW_DIR=/opt/osticket/www
+
+# ssmtp needs updated host name:
+hname=`hostname`
+[ -z "$hname"   ] || sed -i "/^#\\?hostname/chostname=$hname" /etc/ssmtp/ssmtp.conf
+[ -z "$MAILHUB" ] || sed -i "/^#\\?mailhub/cmailhub=$MAILHUB" /etc/ssmtp/ssmtp.conf
+
+# apache configuration
+install -d -o root -g root "$ETC_DIR" "$LOG_DIR"
+
+[ -d "$SRC_DIR" ] || git clone https://github.com/osTicket/osTicket-1.8.git "$SRC_DIR"
+[ -d "$WWW_DIR" ] || (
+    pushd "$SRC_DIR"
+    php setup/cli/manage.php deploy --setup "$WWW_DIR"
+    popd
+)
+
+[ -f "$ETC_DIR/apache.conf" ] || cat <<EOF > "$ETC_DIR/apache.conf"
+<VirtualHost *:80>
+    ServerAdmin dean@serenevy.net
+    ServerName ticket.machinemotion.com
+    ServerAlias www.ticket.machinemotion.com
+
+    CustomLog $LOG_DIR/access.log combined
+    ErrorLog  $LOG_DIR/error.log
+
+    DocumentRoot $WWW_DIR
+    <Directory "$WWW_DIR">
+        Options Indexes FollowSymLinks
+        AllowOverride None
+        Require all granted
+        Order allow,deny
+        Allow from all
+    </Directory>
+
+    <Directory "$WWW_DIR/include">
+        Order Deny,Allow
+        Deny from all
+    </Directory>
+
+    RedirectMatch 404 /\.git
+    RedirectMatch 404 /\.svn
+</VirtualHost>
+EOF
+
+exec /usr/sbin/apache2 -DFOREGROUND
