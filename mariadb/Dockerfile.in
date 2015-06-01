@@ -35,7 +35,11 @@ RUN adduser --system        \
     mysql
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    mariadb-server
+    mariadb-server \
+ && apt-get clean
+
+COPY docker /docker
+
 
 # CLEANUP
 #--------
@@ -46,4 +50,4 @@ INCLUDE ../_includes/99_cleanup.docker
 #--------
 EXPOSE 3306
 
-CMD [ "/usr/bin/mysqld_safe", "--datadir=/opt/mariadb", "--port=3306", "--bind-address=0.0.0.0", "--innodb-file-per-table", "--default-storage-engine=InnoDB" ]
+CMD exec docker/run

@@ -1,0 +1,70 @@
+#!/bin/bash
+VERSION='0.1.0';# Created: 2015-05-20
+set -o nounset     # Die if any variable is unset
+set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+
+VOLUME=/opt/mariadb
+
+DATA_DIR="$VOLUME/data"
+CONF_DIR="$VOLUME/etc"
+SOCKET_DIR="$VOLUME/socket"
+SOCKET="$SOCKET_DIR/mysqld.sock"
+
+MYSQLARGS=(
+    --datadir="$DATA_DIR"
+    --port=3306
+    --bind-address=0.0.0.0
+    --innodb-file-per-table
+    --default-storage-engine=InnoDB
+    --socket="$SOCKET"
+)
+
+install -d -o mysql -g root  /var/run/mysqld "$DATA_DIR" "$SOCKET_DIR"
+install -d -o root  -g root  "$CONF_DIR"
+
+do_query() { echo "$1" | mysql -S "$SOCKET"; }
+
+[ -d "$DATA_DIR/mysql" ] || (
+    echo "Installing MariaDB/MySQL system tables in '$DATA_DIR' ..."
+    /usr/bin/mysql_install_db --datadir="$DATA_DIR" --user=mysql >/dev/null
+    # Want to update security. Mysql has a mysql_secure_installation
+    # script, but it is interactive this is automated.
+
+    # Temporary setup server
+    echo "Launch mysqld_safe --skip-grant-tables"
+    /usr/bin/mysqld_safe --skip-grant-tables --datadir="$DATA_DIR" --socket="$SOCKET" &
+    sleep 5
+
+    # Set a random password
+    [ -f "$CONF_DIR/admin.cnf" ] || (
+        echo "Initialize admin.cnf"
+        my_password="$(perl -E '@a = (0..9,"a".."z","A".."Z"); say  join"", map $a[rand@a], 1..16')"
+        echo "
+[client]
+user     = root
+password = $my_password
+socket   = $SOCKET
+" > "$CONF_DIR/admin.cnf"
+        chmod 600 "$CONF_DIR/admin.cnf"
+    )
+    echo "Update root password"
+    my_password="$(perl -nE 'say($1), exit if /^password\s*=\s*(.*)/' "$CONF_DIR/admin.cnf")"
+    do_query "UPDATE mysql.user SET Password=PASSWORD('$my_password') WHERE User='root';"
+
+    # Clean up garbage
+    echo "Clean up garbage"
+    do_query "DELETE FROM mysql.user WHERE User='';"
+    do_query "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');"
+    if (echo "SHOW DATABASES LIKE 'test';" | mysql -S "$SOCKET" | grep -q .); then
+        do_query "DROP DATABASE test;"
+    fi
+    do_query "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%'"
+
+    echo "Stop temporary server"
+    mysqladmin -S "$SOCKET" shutdown
+    sleep 5
+)
+
+
+echo "Start MariaDB"
+exec /usr/bin/mysqld_safe "${MYSQLARGS[@]}"
