@@ -1,14 +1,12 @@
-#!/bin/sh
+#!/bin/bash
+VERSION='0.1.0';# Created: 2015-05-20
+set -o nounset     # Die if any variable is unset
+set -o errexit     # set +e; COMMAND; set -e to temporarily disable
 
-export APACHE_RUN_USER=www-data
-export APACHE_RUN_GROUP=www-data
-export APACHE_LOG_DIR=/var/log/apache2
-export APACHE_PID_FILE=/var/run/apache2.pid
-export APACHE_RUN_DIR=/var/run/apache2
-export APACHE_LOCK_DIR=/var/lock/apache2
-export APACHE_SERVERADMIN=dean@serenevy.net
-export APACHE_SERVERNAME=puppet
-export APACHE_SERVERALIAS=puppet.machinemotion.com
-export APACHE_DOCUMENTROOT=/var/www
+ETC_DIR=/opt/puppet/etc
+
+install -d -o root   -g root   "$ETC_DIR" "$ETC_DIR/tmp" "$ETC_DIR/public"
+install -d -o puppet -g puppet /opt/puppet/log /opt/puppet/lib/yaml /opt/puppet/lib/yaml/facts
+chown -R puppet:puppet "$ETC_DIR/config.ru" /opt/puppet/lib/yaml/facts
 
 exec /usr/sbin/apache2 -DFOREGROUND
