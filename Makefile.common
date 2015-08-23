@@ -12,10 +12,13 @@ build: Dockerfile
 	docker build --rm -t ${CONTAINER} .
 	docker images | perl -ne'print if 1==$$. or m#${CONTAINER}#'
 
-commit: build bump_revision
+release: build
 	docker tag -f ${CONTAINER} ${REPOSITORY}:latest
 	docker tag -f ${CONTAINER} ${REPOSITORY}:r$$(cat revision)
 	docker images | perl -ne'print if 1==$$. or m#${REPOSITORY}#'
+
+commit: bump_revision
+	$(make) release
 
 upgrade: check-name
 	docker exec -it ${NAME} sh -c 'apt-get update && apt-get -u dist-upgrade --assume-no' | grep -q 'Do you want to continue'
