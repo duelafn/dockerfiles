@@ -7,6 +7,6 @@ ETC_DIR=/opt/puppet/etc
 
 install -d -o root   -g root   "$ETC_DIR" "$ETC_DIR/tmp" "$ETC_DIR/public"
 install -d -o puppet -g puppet /opt/puppet/log /opt/puppet/lib/yaml /opt/puppet/lib/yaml/facts
-chown -R puppet:puppet "$ETC_DIR/config.ru" /opt/puppet/lib/yaml/facts
+chown -R puppet:puppet "$ETC_DIR/config.ru" /opt/puppet/lib/yaml
 
 exec /usr/sbin/apache2 -DFOREGROUND
