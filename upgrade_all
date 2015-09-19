@@ -1,6 +1,5 @@
 #!/usr/bin/perl -w
 # Author: Dean Serenevy  <dean@serenevy.net>
-# This software is Copyright (c) 2015 CMM, Inc.
 use strict; use warnings; use 5.014;
 
 use Getopt::Long qw/:config bundling/;
@@ -36,29 +35,29 @@ MAIN(\%OPT, @ARGV);
 sub MAIN {
     # Test each image for needed upgrades: DIRECTORY, TEST_IMAGE_NAME
     # Order irrelevant here.
-    ## docker ps | perl -nE 'say qq[build_upgrade("$1", "$2");] if m#cmminc/([^:\s]+).*\s([\w-]+)\s*$#' | sort
-    my $gitolite          =                    build_upgrade("gitolite", "gitolite");
-    my $mariadb_ticket    =                    build_upgrade("mariadb",  "osticket-data");
-    my $mariadb_timeclock = $mariadb_ticket || build_upgrade("mariadb",  "timeclock-data");
-    my $osticket_cmm      =                    build_upgrade("osticket", "osticket");
+    ## docker ps | perl -nE 'say qq[build_upgrade("$1", "$2");] if m#duelafn/([^:\s]+).*\s([\w-]+)\s*$#' | sort
+#     my $gitolite          =                    build_upgrade("gitolite", "gitolite");
+#     my $mariadb_ticket    =                    build_upgrade("mariadb",  "osticket-data");
+#     my $mariadb_timeclock = $mariadb_ticket || build_upgrade("mariadb",  "timeclock-data");
+#     my $osticket          =                    build_upgrade("osticket", "osticket");
     my $puppet3           =                    build_upgrade("puppet",   "puppet3");
-    my $redis             =                    build_upgrade("redis",    "redis");
-    my $sshd_backup       =                    build_upgrade("sshd",     "ssh-backup");
-    my $sshd_proxy        = $sshd_backup    || build_upgrade("sshd",     "ssh-proxy");
-    my $timeclock         =                    build_upgrade("timecard", "timeclock");
+#     my $redis             =                    build_upgrade("redis",    "redis");
+#     my $sshd_backup       =                    build_upgrade("sshd",     "ssh-backup");
+#     my $sshd_proxy        = $sshd_backup    || build_upgrade("sshd",     "ssh-proxy");
+#     my $timeclock         =                    build_upgrade("timecard", "timeclock");
 
     if ($OPT{restart}) {
         # Now restart services if any dependencies have changed
         # Order matters here!
-        restart("docker-gitolite",       $gitolite);
-        restart("docker-osticket-data",  $mariadb_ticket);
-        restart("docker-timeclock-data", $mariadb_timeclock);
-        restart("docker-osticket",       $mariadb_ticket, $osticket_cmm);
+#         restart("docker-gitolite",       $gitolite);
+#         restart("docker-osticket-data",  $mariadb_ticket);
+#         restart("docker-timeclock-data", $mariadb_timeclock);
+#         restart("docker-osticket",       $mariadb_ticket, $osticket);
         restart("docker-puppet3",        $puppet3);
-        restart("docker-redis",          $redis);
-        restart("docker-ssh-backup",     $sshd_backup);
-        restart("docker-ssh-proxy",      $sshd_proxy);
-        restart("docker-timeclock",      $mariadb_timeclock, $timeclock);
+#         restart("docker-redis",          $redis);
+#         restart("docker-ssh-backup",     $sshd_backup);
+#         restart("docker-ssh-proxy",      $sshd_proxy);
+#         restart("docker-timeclock",      $mariadb_timeclock, $timeclock);
     }
 }
 

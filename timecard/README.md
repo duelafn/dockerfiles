@@ -25,17 +25,17 @@ host. Example:
 
     server {
         listen *:80;
-        server_name timeclock.apcillc.com timeclock.machinemotion.com www.timeclock.machinemotion.com www.timeclock.apcillc.com;
+        server_name timeclock.serenevy.net www.timeclock.serenevy.net;
         return  301 https://$server_name$request_uri;
     }
 
     server {
         listen 162.17.32.4:443;
-        server_name timeclock.apcillc.com timeclock.machinemotion.com www.timeclock.machinemotion.com www.timeclock.apcillc.com;
+        server_name timeclock.serenevy.net www.timeclock.serenevy.net;
 
         ssl on;
-        ssl_certificate /opt/timeclock/etc/apache2/ssl/timeclock.apcillc.com.chained.crt;
-        ssl_certificate_key /opt/timeclock/etc/apache2/ssl/timeclock.apcillc.com.key;
+        ssl_certificate /opt/timeclock/etc/apache2/ssl/timeclock.serenevy.net.chained.crt;
+        ssl_certificate_key /opt/timeclock/etc/apache2/ssl/timeclock.serenevy.net.key;
         ssl_session_cache shared:SSL:10m;
 
         location / {

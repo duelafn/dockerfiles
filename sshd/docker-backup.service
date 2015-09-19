@@ -9,7 +9,7 @@ RestartForceExitStatus=1
 RestartSec=10
 ExecStartPre=-/usr/bin/docker kill ssh-backup
 ExecStartPre=-/usr/bin/docker rm ssh-backup
-ExecStart=/usr/bin/docker run --rm -h backup.machinemotion.com -v /backup/remotes:/opt/sshd -p 162.17.32.5:22:22 --name ssh-backup duelafn/sshd:latest
+ExecStart=/usr/bin/docker run --rm -h backup.serenevy.net -v /backup/remotes:/opt/sshd -p 162.17.32.5:22:22 --name ssh-backup duelafn/sshd:latest
 ExecReload=-/usr/bin/docker exec ssh-backup /docker/reload
 ExecStop=-/usr/bin/docker stop ssh-backup
 

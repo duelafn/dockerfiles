@@ -27,8 +27,8 @@ install -d -o root -g root "$ETC_DIR" "$LOG_DIR"
 [ -f "$ETC_DIR/apache.conf" ] || cat <<EOF > "$ETC_DIR/apache.conf"
 <VirtualHost *:80>
     ServerAdmin dean@serenevy.net
-    ServerName ticket.machinemotion.com
-    ServerAlias www.ticket.machinemotion.com
+    ServerName ticket.serenevy.net
+    ServerAlias www.ticket.serenevy.net
 
     CustomLog $LOG_DIR/access.log combined
     ErrorLog  $LOG_DIR/error.log

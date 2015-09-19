@@ -11,7 +11,7 @@ ExecStartPre=-/usr/bin/docker kill timeclock
 ExecStartPre=-/usr/bin/docker kill timeclock-data
 ExecStartPre=-/usr/bin/docker rm timeclock
 ExecStartPre=-/usr/bin/docker rm timeclock-data
-ExecStart=/usr/bin/docker run --rm -h timeclock-data.machinemotion.com -v /opt/timeclock/data:/opt/mariadb --name timeclock-data duelafn/mariadb:latest
+ExecStart=/usr/bin/docker run --rm -h timeclock-data.serenevy.net -v /opt/timeclock/data:/opt/mariadb --name timeclock-data duelafn/mariadb:latest
 ExecStop=-/usr/bin/docker stop timeclock
 ExecStop=-/usr/bin/docker stop timeclock-data
 

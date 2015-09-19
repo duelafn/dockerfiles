@@ -23,7 +23,7 @@ ENV APACHE_RUN_DIR       /var/run/apache2
 ENV APACHE_LOCK_DIR      /var/lock/apache2
 ENV APACHE_SERVERADMIN   dean@serenevy.net
 ENV APACHE_SERVERNAME    tickets
-ENV APACHE_SERVERALIAS   tickets.machinemotion.com
+ENV APACHE_SERVERALIAS   tickets.serenevy.net
 ENV APACHE_DOCUMENTROOT  /var/www
 ENV MAILHUB              172.17.42.1
 

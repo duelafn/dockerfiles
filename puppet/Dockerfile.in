@@ -23,7 +23,7 @@ ENV APACHE_RUN_DIR      /var/run/apache2
 ENV APACHE_LOCK_DIR     /var/lock/apache2
 ENV APACHE_SERVERADMIN  dean@serenevy.net
 ENV APACHE_SERVERNAME   puppet
-ENV APACHE_SERVERALIAS  puppet.machinemotion.com
+ENV APACHE_SERVERALIAS  puppet.serenevy.net
 ENV APACHE_DOCUMENTROOT /var/www
 
 ENV UID_PUPPET 200
