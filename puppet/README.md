@@ -7,10 +7,10 @@ VOLUME: /opt/puppet
 First time run with a new host name, new volume, or upon changing the
 ssldir:
 
-    docker run --rm                  \
-        -h puppet.serenevy.net       \
-        -v /opt/puppet:/opt/puppet   \
-        duelafn/puppetmaster:latest  \
+    docker run --rm                      \
+        -h puppet.serenevy.net           \
+        -v /usr/local/puppet:/opt/puppet \
+        duelafn/puppetmaster:latest      \
         /docker/init
 
 This will initialize configuration files and generate and sign a server
