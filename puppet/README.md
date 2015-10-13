@@ -8,9 +8,9 @@ First time run with a new host name, new volume, or upon changing the
 ssldir:
 
     docker run --rm                  \
-        -h puppet.serenevy.net       \
+        -h puppet.machinemotion.com  \
         -v /opt/puppet:/opt/puppet   \
-        duelafn/puppetmaster:latest  \
+        cmminc/puppetmaster:latest   \
         /docker/init
 
 This will initialize configuration files and generate and sign a server
@@ -20,6 +20,15 @@ generated.
 After initialization, edit configs in `/opt/puppet/etc` can be modified if
 needed.
 
+Running Container
+=================
+
+    docker run --rm                  \
+        -h puppet.machinemotion.com  \
+        -v /opt/puppet:/opt/puppet   \
+        -p 127.0.0.1:8140:8140       \
+        --name puppet3               \
+        cmminc/puppetmaster:latest
 
 Client Management
 =================
