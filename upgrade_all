@@ -17,6 +17,7 @@ qw/ help|h version noact|no-act|dry-run DEBUG
     restart
     force|f!
   /;
+our @REPORT;
 sub USAGE { <<"__USAGE__" };
 usage: $_[0] [options]
 __USAGE__
@@ -40,12 +41,12 @@ sub MAIN {
     my $gitolite          =                    build_upgrade("gitolite", "gitolite");
     my $mariadb_ticket    =                    build_upgrade("mariadb",  "osticket-data");
     my $mariadb_timeclock = $mariadb_ticket || build_upgrade("mariadb",  "timeclock-data");
-    my $osticket_cmm      =                    build_upgrade("osticket", "osticket");
+    my $osticket_cmm      =                    build_upgrade("osticket", "osticket");        NOT_UPGRADED("osticket PHP app (external resource)");
     my $puppet3           =                    build_upgrade("puppet",   "puppet3");
     my $redis             =                    build_upgrade("redis",    "redis");
     my $sshd_backup       =                    build_upgrade("sshd",     "ssh-backup");
     my $sshd_proxy        = $sshd_backup    || build_upgrade("sshd",     "ssh-proxy");
-    my $timeclock         =                    build_upgrade("timecard", "timeclock");
+    my $timeclock         =                    build_upgrade("timecard", "timeclock");       NOT_UPGRADED("timeclock PHP app (external resource)");
 
     if ($OPT{restart}) {
         # Now restart services if any dependencies have changed
@@ -60,6 +61,17 @@ sub MAIN {
         restart("docker-ssh-proxy",      $sshd_proxy);
         restart("docker-timeclock",      $mariadb_timeclock, $timeclock);
     }
+
+    report();
+}
+
+sub NOT_UPGRADED {
+    push @REPORT, "Not Upgraded: @_";
+}
+
+sub report {
+    say "\n\e[1mREPORT:\e[0m" if @REPORT;
+    say for @REPORT;
 }
 
 # Return true if an upgrade succeeded.
