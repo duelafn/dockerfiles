@@ -1,0 +1,13 @@
+#!/bin/bash
+VERSION='0.1.0';# Created: 2015-05-20
+set -o nounset     # Die if any variable is unset
+set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+
+VOLUME=/opt/mariadb
+
+ARGS=()
+
+[ -e "$VOLUME/etc/admin.cnf" ]      && ARGS+=(--defaults-file="$VOLUME/etc/admin.cnf")
+[ -e "$VOLUME/socket/mysqld.sock" ] && ARGS+=(--socket="$VOLUME/socket/mysqld.sock")
+
+mysqldump "${ARGS[@]}" "$@"

@@ -44,3 +44,8 @@ information to work properly.
 
     docker exec ... /docker/mysql
     docker exec ... /docker/mysqladmin
+    docker exec ... /docker/mysqldump
+
+So, for example, a backup can be performed using:
+
+    docker exec -it osticket-data /docker/mysqldump --all-databases --single-transaction | gzip -c > osticket_2015-12-05.sql.gz
