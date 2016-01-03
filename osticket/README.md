@@ -4,7 +4,7 @@ Volume Initialization
 
 Launch:
 
-    docker run -it --rm --hostname ticket.serenevy.net --name osticket-data -v /opt/osticket/data:/opt/mariadb mariadb
+    docker run -it --rm --hostname ticket.serenevy.net --name osticket-data -v /srv/osticket/data:/opt/mariadb mariadb
 
 Set up Database:
 
@@ -18,6 +18,6 @@ Set up Database:
 Launch:
 
     docker run -it --rm --hostname ticket.serenevy.net --name osticket --link osticket-data:osticket-data \
-        -e MAILHUB=172.17.42.1 -p 127.0.0.1:3280:80 -v /opt/osticket:/opt/osticket osticket
+        -e MAILHUB=172.17.42.1 -p 127.0.0.1:3280:80 -v /srv/osticket:/opt/osticket osticket
 
 Visit: http://ticket.serenevy.net/ to run the setup script.

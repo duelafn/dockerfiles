@@ -9,7 +9,7 @@ RestartForceExitStatus=1
 RestartSec=10
 ExecStartPre=-/usr/bin/docker kill ssh-proxy
 ExecStartPre=-/usr/bin/docker rm ssh-proxy
-ExecStart=/usr/bin/docker run --rm -h proxy.serenevy.net -v /opt/proxy:/opt/sshd -p 162.17.32.3:22:22 -p 162.17.32.3:2222:2222 --name ssh-proxy duelafn/sshd:latest
+ExecStart=/usr/bin/docker run --rm -h proxy.serenevy.net -v /srv/proxy:/opt/sshd -p 162.17.32.3:22:22 -p 162.17.32.3:2222:2222 --name ssh-proxy duelafn/sshd:latest
 ExecReload=-/usr/bin/docker exec ssh-proxy /docker/reload
 ExecStop=-/usr/bin/docker stop ssh-proxy
 
