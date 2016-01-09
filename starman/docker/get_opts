@@ -1,0 +1,102 @@
+#!/usr/bin/perl -w
+# Copyright (C) 2016  Dean Serenevy
+#
+# This program is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the Free
+# Software Foundation, version 3 of the License.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program. If not, see <http://www.gnu.org/licenses/>.
+use strict; use warnings; use 5.014;
+
+use Carp;
+use Getopt::Long qw/:config bundling/;
+use Hash::Util qw/ lock_keys /;
+our $VERSION = '0.1.0';# Created: 2016-01-09
+
+our %OPT = (  );
+our @OPT_SPEC =
+qw/ help|h version noact|no-act|dry-run DEBUG
+  /;
+sub USAGE { <<"__USAGE__" };
+usage: $_[0] [options]
+__USAGE__
+
+get_options( \%OPT, @OPT_SPEC );
+MAIN(\%OPT, @ARGV);
+
+sub MAIN {
+    my ($opt, @conf) = @_;
+    my %o;
+    for my $file (@conf) {
+        my %seen;
+        next unless open my $F, "<", $file;
+        for (<$F>) {
+            next if /^\s*#/ or !/\S/;
+            s/^\s+//; s/\s+$//;
+            my ($opt, $val) = split /\s+/, $_, 2;
+            if ($opt =~ s/^!//) {
+                delete $o{$opt};
+            } elsif ($seen{$opt}++) {
+                push @{$o{$opt}}, $val;
+            } else {
+                $o{$opt} = [ $val ];
+            }
+        }
+    }
+
+    delete $o{qw/ D daemonize /};# Not allowed!
+    print_options(%o);
+}
+
+sub print_options {
+    my %o = @_;
+    my @o;
+    while (my ($key, $val) = each %o) {
+        push @o, (1 == length($key)) ? qbash("-$key") : qbash("--$key");
+        push @o, qbash($val) if defined($val);
+    }
+    say "@o";
+}
+
+sub get_options {
+    my $OPT = shift;
+    GetOptions $OPT, @_ or usage(1);
+    usage() if $$OPT{help} || $$OPT{version};
+    lock_keys(%$OPT, keys %$OPT, map /^(\w+)/, @_);
+}
+
+sub usage {
+    my $status = (@_ && $_[0] =~ /^\d+$/) ? shift(@_) : 0+@_;
+    print @_, "\n" if @_;
+    require File::Spec; my $exe = (File::Spec->splitpath($0))[2];
+    $OPT{$_} = $OPT{$_} ? "enabled" : "disabled" for map /^(\w+).*!/, @OPT_SPEC;
+    print $OPT{version} ? "$exe version $VERSION\n" : USAGE($exe);
+    exit $status;
+}
+
+#BEGIN: qbash
+sub qbash($) {
+    state $unprintable = '[^\pL\pM\pN\pP\pS\pZ[:print:]\s]';
+    require Encode;
+    local $_ = shift;
+    if (/$unprintable/o) {
+      my $utf8 = eval { !Encode::is_utf8($_) && Encode::decode( "UTF-8", $_, 1 ) };
+      croak "Unquotable expression: $_" if !$utf8 or $@ or $utf8 =~ /$unprintable/o;
+
+      # Encoded UTF-8!
+      $utf8 =~ s/'/'\\''/g;
+      no re 'taint';
+      $utf8 =~ /^(.*)$/s and return "'".Encode::encode( "UTF-8", $1 )."'";
+    }
+    s/'/'\\''/g;
+    no re 'taint';
+    !Encode::is_utf8($_) and /^([\w\-\+\.\/]+)$/s and return "$1"; # Pretty print simple things
+    /^(.*)$/s and return "'$1'";
+}
+#END: qbash

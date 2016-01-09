@@ -1,0 +1,45 @@
+
+# Keep in mind that the starman volume is mounted at /opt/starman
+# regardless of where you keep your files on the docker server.
+
+# app: Specifies the full path to the .psgi script that we should run.
+#
+app /opt/starman/app.psgi
+
+# I: include path, just like perl executable
+#
+I /opt/starman/lib
+
+# M: pre-load a module. This should only be used for system modules since
+# preloading application modules can break graceful reload.
+#
+#M Moose
+#M DBIx::Class
+
+# env: Environment option, also sets PLACK_ENV environment variable
+#
+env deployment
+
+
+# By default we do not maintain any access logs, instead expecting that
+# they will be kept by the reverse proxy. If you are using this as a
+# front-end server, you may want to set this option
+#
+#access-log /opt/starman/log/access.log
+
+# listen: Specifies the TCP address, ports and UNIX domain sockets to bind
+# to wait for requests. You can repeat as many times as you want and mix
+# TCP and UNIX domain sockets.
+#
+# For TCP sockets you can append :ssl after the port to specify that
+# connections on that port should use SSL. Note that the SSL support is
+# experimental and hasn't been widely tested.
+#
+#listen :5000
+#listen /opt/starman/run/starman.sock
+
+# Specify a user and group that the server process should switch to after
+# binding to the port.
+#
+#user  www-data
+#group www-data
