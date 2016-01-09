@@ -1,0 +1,26 @@
+Patch against osticket v1.9.12 and later which includes a reporter's
+company in the ticket list along with their name.
+
+--- /home/deans/tickets.inc.php 2015-12-04 13:19:59.438381339 -0500
++++ www/include/staff/tickets.inc.php   2015-12-04 13:52:13.996028724 -0500
+@@ -254,7 +254,7 @@
+          .' ,ticket.created as ticket_created, CONCAT_WS(" ", staff.firstname, staff.lastname) as staff, team.name as team '
+          .' ,IF(staff.staff_id IS NULL,team.name,CONCAT_WS(" ", staff.lastname, staff.firstname)) as assigned '
+          .' ,IF(ptopic.topic_pid IS NULL, topic.topic, CONCAT_WS(" / ", ptopic.topic, topic.topic)) as helptopic '
+-         .' ,cdata.priority as priority_id, cdata.subject, pri.priority_desc, pri.priority_color';
++         .' ,cdata.priority as priority_id, cdata.subject, pri.priority_desc, pri.priority_color, cdata.company';
+ 
+ $qfrom.=' LEFT JOIN '.TICKET_LOCK_TABLE.' tlock ON (ticket.ticket_id=tlock.ticket_id AND tlock.expire>NOW()
+                AND tlock.staff_id!='.db_input($thisstaff->getId()).') '
+@@ -477,8 +477,9 @@
+                             echo '<i class="icon-fixed-width icon-paperclip"></i>&nbsp;';
+                     ?>
+                 </td>
+-                <td nowrap>&nbsp;<?php echo Format::htmlchars(
+-                        Format::truncate($row['name'], 22, strpos($row['name'], '@'))); ?>&nbsp;</td>
++                <td nowrap>&nbsp;<?php echo Format::htmlchars( Format::truncate($row['name'], 22, strpos($row['name'], '@')) )
++                        . '<br>&nbsp;(' . Format::htmlchars( Format::truncate($row['company'], 22) ) . ')'
++                ; ?>&nbsp;</td>
+                 <?php
+                 if($search && !$status){
+                     $displaystatus=ucfirst($row['status']);
