@@ -1,0 +1,48 @@
+#!/bin/bash
+# `pgdo` works like sudo, but runs as postgres user and also preserves PID (and probably ENV vars)
+. /docker/functions
+
+VOL="/opt/postgresql"
+PGDATA="$VOL/data"
+CONFDIR="$VOL/conf"
+LOGDIR="$VOL/log"
+
+MAINCONF="$VOL/conf/main"
+SRCDIR="/etc/postgresql/tmpl/main"
+# Probably only a single one, but take the last one just in case
+PGSERVER="$(find /usr/lib/postgresql -name postgres | tail -n1)"
+
+export PGDATA
+
+# Directories
+[ -d "$LOGDIR" ]      || install -d -u postgres -g postgres -m 0755 "$LOGDIR"
+[ -d "$CONFDIR" ]     || install -d -u postgres -g postgres -m 0755 "$CONFDIR"
+[ -d "$MAINCONF" ]    || install -d -u postgres -g postgres -m 0755 "$MAINCONF"
+[ -d "$CONFDIR/ssl" ] || install -d -u root     -g root     -m 0755 "$CONFDIR/ssl"
+
+# Snakeoil Certificate
+if [ ! -f "$CONFDIR/ssl/private/ssl-cert-snakeoil.key" ]; then
+    [ -d "$CONFDIR/ssl/certs" ]    || install -d -u root     -g root     -m 0755 "$CONFDIR/ssl/certs"
+    [ -d "$CONFDIR/ssl/private" ]  || install -d -u root     -g ssl-cert -m 0710 "$CONFDIR/ssl/private"
+
+    # Regnerate else, everyone knows our key!
+    make-ssl-cert generate-default-snakeoil --force-overwrite
+
+    cp -a /etc/ssl/certs/ssl-cert-snakeoil.pem    "$CONFDIR/ssl/certs/"
+    cp -a /etc/ssl/private/ssl-cert-snakeoil.key  "$CONFDIR/ssl/private/"
+fi
+
+# Configuration Files
+[ -f "$MAINCONF/pg_hba.conf" ]     || install    -u postgres -g postgres -m 0640 "$SRCDIR/pg_hba.conf"     "$MAINCONF/pg_hba.conf"
+[ -f "$MAINCONF/pg_ident.conf" ]   || install    -u postgres -g postgres -m 0640 "$SRCDIR/pg_ident.conf"   "$MAINCONF/pg_ident.conf"
+[ -f "$MAINCONF/postgresql.conf" ] || install    -u postgres -g postgres -m 0644 "$SRCDIR/postgresql.conf" "$MAINCONF/postgresql.conf"
+
+# Initialize a database
+if ([ ! -d "$PGDATA" ] || find "$PGDATA" -maxdepth 0 -empty | grep -q .); then
+    # arguments taken from settings in Debian's pg_createcluster
+    # Probably only work for postgres 9.1 or greater.
+    pgdo initdb  --auth-local peer  --auth-host md5
+fi
+
+# Launch!
+exec pgdo "$PGSERVER" -c config_file="$CONFDIR/postgresql.conf"

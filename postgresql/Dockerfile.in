@@ -14,7 +14,6 @@ INCLUDE ../_includes/00_prepare.docker
 
 ENV UID_POSTGRES 202
 ENV GID_POSTGRES 202
-ENV PGHOST /opt/postgresql
 
 INCLUDE ../_includes/05_localenv.docker
 INCLUDE ../_includes/10_setup.docker
@@ -34,12 +33,17 @@ RUN useradd --system                         \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql
 
-RUN pg_dropcluster $(pg_lsclusters | tail -n 1 | awk '{print$1" "$2}')
-
 RUN install -d -m 2775 -o postgres -g postgres /var/run/postgresql
-RUN install -d -m 0775 -o postgres -g postgres /etc/postgresql
 
-COPY run_postgres /usr/local/bin/run_postgres
+RUN rm -rf /var/lib/postgresql
+
+RUN PG_ETC=/etc/postgresql/*; mv $PG_ETC /etc/postgresql/tmpl; ln -s /opt/postgresql/conf $PG_ETC
+
+RUN sed -i "/^data_directory[ =]/cdata_directory = '/opt/postgresql/data'"        /etc/postgresql/tmpl/main/postgresql.conf
+RUN sed -i "/^ssl[ =]/cssl = false"                                               /etc/postgresql/tmpl/main/postgresql.conf
+RUN perl -pi -e "s#/etc/ssl#/opt/postgresql/conf/ssl#"                            /etc/postgresql/tmpl/main/postgresql.conf
+
+COPY docker /docker
 
 # CLEANUP
 #--------
@@ -49,7 +53,5 @@ INCLUDE ../_includes/99_cleanup.docker
 # RUNNING
 #--------
 EXPOSE 5432
-USER postgres
-WORKDIR /opt/postgresql
 
-CMD /usr/local/bin/run_postgres
+CMD exec /docker/run
