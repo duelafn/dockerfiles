@@ -1,0 +1,7 @@
+#!/bin/sh
+# `pgdo` works like sudo, but runs as postgres user and also preserves PID (and probably ENV vars)
+. /docker/functions
+
+PG_CTL="$(find /usr/lib/postgresql -name pg_ctl | tail -n1)"
+
+pgdo $PG_CTL reload

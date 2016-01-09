@@ -7,7 +7,7 @@ Volume Initialization
 * Run the gitolite setup with volume in place and various variables set.
 
     docker run --rm -it                  \
-        -v /opt/git:/opt/git             \
+        -v /srv/git:/opt/git             \
         -u git -e USER=git gitolite      \
         gitolite setup -pk admin-pk.pub
 

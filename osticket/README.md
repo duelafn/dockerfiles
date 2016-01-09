@@ -2,7 +2,7 @@
 Volume Initialization
 =====================
 
-Set up sources in /opt/osticket/www either from tarball or from git clone:
+Set up sources in /srv/osticket/www either from tarball or from git clone:
 
     cd /opt/osticket
     git clone https://github.com/osTicket/osTicket-1.8 src
@@ -13,7 +13,7 @@ Set up sources in /opt/osticket/www either from tarball or from git clone:
 
 Launch database instance:
 
-    docker run -it --rm --hostname ticket.machinemotion.com --name osticket-data -v /opt/osticket/data:/opt/mariadb mariadb
+    docker run -it --rm --hostname ticket.machinemotion.com --name osticket-data -v /srv/osticket/data:/opt/mariadb mariadb
 
 Set up Database:
 
@@ -27,7 +27,7 @@ Set up Database:
 Launch osticket instance:
 
     docker run -it --rm --hostname ticket.machinemotion.com --name osticket --link osticket-data:osticket-data \
-        -e MAILHUB=172.17.42.1 -p 127.0.0.1:3280:80 -v /opt/osticket:/opt/osticket osticket
+        -e MAILHUB=172.17.42.1 -p 127.0.0.1:3280:80 -v /srv/osticket:/opt/osticket osticket
 
 Visit: http://ticket.machinemotion.com/ to run the setup script.
 
@@ -39,7 +39,7 @@ After setup remove the setup scripts for security:
 Git-based Upgrades
 ==================
 
-    cd /opt/osticket/src
+    cd /srv/osticket/src
     git fetch
     git checkout v1.9.12      # for example
 

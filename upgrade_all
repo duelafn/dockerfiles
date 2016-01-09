@@ -1,6 +1,5 @@
 #!/usr/bin/perl -w
 # Author: Dean Serenevy  <dean@serenevy.net>
-# This software is Copyright (c) 2015 CMM, Inc.
 use strict; use warnings; use 5.014;
 
 use Getopt::Long qw/:config bundling/;
