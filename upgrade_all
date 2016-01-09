@@ -16,6 +16,7 @@ qw/ help|h version noact|no-act|dry-run DEBUG
     restart
     force|f!
   /;
+our @REPORT;
 sub USAGE { <<"__USAGE__" };
 usage: $_[0] [options]
 __USAGE__
@@ -59,6 +60,17 @@ sub MAIN {
 #         restart("docker-ssh-proxy",      $sshd_proxy);
 #         restart("docker-timeclock",      $mariadb_timeclock, $timeclock);
     }
+
+    report();
+}
+
+sub NOT_UPGRADED {
+    push @REPORT, "Not Upgraded: @_";
+}
+
+sub report {
+    say "\n\e[1mREPORT:\e[0m" if @REPORT;
+    say for @REPORT;
 }
 
 # Return true if an upgrade succeeded.
