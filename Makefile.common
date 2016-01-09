@@ -6,7 +6,7 @@
 
 
 Dockerfile: Dockerfile.in ../_includes/* ${LOCALENV}
-	perl -MFile::Slurp -ne 'print /^INCLUDE\s*(.*)/ ? read_file("$$1") : $$_' $< >$@
+	perl -MFile::Slurp -ne 'print /^INCLUDE\s+(.*)/ ? read_file("$$1") : $$_' $< >$@
 
 build: Dockerfile
 	docker build --rm -t ${CONTAINER} .
@@ -24,12 +24,12 @@ upgrade: check-name
 	docker exec -it ${NAME} sh -c 'apt-get update && apt-get -u dist-upgrade --assume-no' | grep -q 'Do you want to continue'
 	$(MAKE) force-upgrade
 
-force-upgrade:
+force-upgrade: Dockerfile
 	$(MAKE) bump_update
 	docker build -q --rm --no-cache=true -t ${CONTAINER} .
 	docker tag -f ${CONTAINER} ${REPOSITORY}:latest
 	docker tag -f ${CONTAINER} ${REPOSITORY}:r$$(cat revision).$$(cat update)
-	docker images | perl -ne'print if 1==$$. or m#${REPOSITORY}#'
+	docker images | perl -ne'print if 1==$$. or m#\Q${REPOSITORY}\E#'
 
 check-name:
 ifndef NAME
