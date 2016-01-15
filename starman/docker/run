@@ -3,7 +3,7 @@ VERSION='0.1.0';# Created: 2016-01-09
 set -o nounset     # Die if any variable is unset
 set -o errexit     # set +e; COMMAND; set -e to temporarily disable
 
-VOLUME=/opt/starman
+VOLUME=/www
 
 mkdir -p "$VOLUME/etc" "$VOLUME/log" "$VOLUME/run"
 chown www-data:www-data "$VOLUME/log"

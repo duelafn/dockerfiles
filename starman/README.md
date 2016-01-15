@@ -11,7 +11,7 @@ By default starman will listen on port `5000` and to
 
     docker run --rm
         -h serenevy.net
-        -v /srv/serenevy:/opt/starman
+        -v /srv/serenevy:/www
         -p 127.0.0.1:80:5000
         --name starman
         duelafn/starman:latest
@@ -20,7 +20,7 @@ By default starman will listen on port `5000` and to
 Volume Layout
 =============
 
-VOLUME: `/opt/starman`
+VOLUME: `/www`
 
 
 * $VOLUME/etc/starman.conf

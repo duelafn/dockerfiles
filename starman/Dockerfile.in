@@ -5,7 +5,7 @@ MAINTAINER Dean Serenevy <dean@serenevy.net>
 
 # CONFIGURATION
 #--------------
-VOLUME ["/opt/starman"]
+VOLUME ["/www"]
 
 
 # BUILDING
