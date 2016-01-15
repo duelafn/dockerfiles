@@ -51,17 +51,20 @@ sub MAIN {
     }
 
     delete $o{qw/ D daemonize /};# Not allowed!
-    print_options(%o);
+    exec starman => build_options(%o);
 }
 
-sub print_options {
+sub build_options {
     my %o = @_;
     my @o;
-    while (my ($key, $val) = each %o) {
-        push @o, (1 == length($key)) ? qbash("-$key") : qbash("--$key");
-        push @o, qbash($val) if defined($val);
+    while (my ($key, $arr) = each %o) {
+        my $opt = (1 == length($key)) ? "-$key" : "--$key";
+        for my $val (@$arr) {
+            push @o, $opt;
+            push @o, $val if defined($val);
+        }
     }
-    say "@o";
+    return @o;
 }
 
 sub get_options {
@@ -79,24 +82,3 @@ sub usage {
     print $OPT{version} ? "$exe version $VERSION\n" : USAGE($exe);
     exit $status;
 }
-
-#BEGIN: qbash
-sub qbash($) {
-    state $unprintable = '[^\pL\pM\pN\pP\pS\pZ[:print:]\s]';
-    require Encode;
-    local $_ = shift;
-    if (/$unprintable/o) {
-      my $utf8 = eval { !Encode::is_utf8($_) && Encode::decode( "UTF-8", $_, 1 ) };
-      croak "Unquotable expression: $_" if !$utf8 or $@ or $utf8 =~ /$unprintable/o;
-
-      # Encoded UTF-8!
-      $utf8 =~ s/'/'\\''/g;
-      no re 'taint';
-      $utf8 =~ /^(.*)$/s and return "'".Encode::encode( "UTF-8", $1 )."'";
-    }
-    s/'/'\\''/g;
-    no re 'taint';
-    !Encode::is_utf8($_) and /^([\w\-\+\.\/]+)$/s and return "$1"; # Pretty print simple things
-    /^(.*)$/s and return "'$1'";
-}
-#END: qbash

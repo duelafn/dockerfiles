@@ -10,4 +10,4 @@ chown www-data:www-data "$VOLUME/log"
 
 [ -e "$VOLUME/etc/starman.conf" ] || cp /docker/starman.conf.example "$VOLUME/etc/starman.conf"
 
-exec starman $(/docker/get_opts /docker/starman.conf "$VOLUME/etc/starman.conf")
+exec /docker/starman /docker/starman.conf "$VOLUME/etc/starman.conf"
