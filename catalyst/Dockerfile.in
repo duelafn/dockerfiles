@@ -1,0 +1,56 @@
+
+FROM duelafn/starman
+MAINTAINER Dean Serenevy <dean@serenevy.net>
+
+# BUILDING
+#---------
+INCLUDE ../_includes/10_setup.docker
+
+# MAIN
+#-----
+RUN  echo 'deb http://serenevy.net/debian jessie main' > /etc/apt/sources.list.d/serenevy.list
+COPY dean-serenevy.gpg /etc/apt/trusted.gpg.d/dean-serenevy.gpg
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libcatalyst-authentication-store-dbix-class-perl \
+    libcatalyst-dispatchtype-regex-perl              \
+    libcatalyst-perl                                 \
+    libcatalyst-plugin-authorization-roles-perl      \
+    libcatalyst-plugin-configloader-perl             \
+    libcatalyst-plugin-session-state-cookie-perl     \
+    libcatalyst-plugin-session-store-fastmmap-perl   \
+    libcatalyst-view-json-perl                       \
+    libcatalyst-view-tt-perl                         \
+    libconfig-tiny-perl                              \
+    libcrypt-passwdmd5-perl                          \
+    libdate-manip-perl                               \
+    libdbd-pg-perl                                   \
+    libdbix-class-perl                               \
+    libdean-util-perl                                \
+    libhtml-formfu-perl                              \
+    libical-parser-perl                              \
+    libical-simple-perl                              \
+    libimage-exiftool-perl                           \
+    libimage-magick-perl                             \
+    libjson-perl                                     \
+    libjson-xs-perl                                  \
+    libmoose-perl                                    \
+    libmoosex-attribute-chained-perl                 \
+    libmoosex-methodattributes-perl                  \
+    libmoosex-types-perl                             \
+    libmro-compat-perl                               \
+    libnamespace-autoclean-perl                      \
+    libparse-recdescent-perl                         \
+    libpath-class-perl                               \
+    libtemplate-autofilter-perl                      \
+    liburi-perl                                      \
+    libyaml-perl                                     \
+    libyaml-syck-perl                                \
+ && apt-get clean
+
+# For Database::Connect
+RUN ln -s /www/etc/databases /etc/databases
+
+# CLEANUP
+#--------
+INCLUDE ../_includes/99_cleanup.docker
