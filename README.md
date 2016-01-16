@@ -2,6 +2,13 @@
 Usage
 =====
 
+Volumes
+=======
+
+These dockerfiles are set up to use a single volume for both configuration
+and perminant storage. Contrary to recommended practices, I typically mount
+plain directory volumes rather than use storage containers, so that is what
+all the samples use. Feel free to use storage containers if you like.
 
 
 Creating New Machines
