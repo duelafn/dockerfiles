@@ -2,3 +2,4 @@
 Dockerfile
 /*/update
 sample.service
+/_etc/upgrade.conf
