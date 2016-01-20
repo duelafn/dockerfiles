@@ -1,0 +1,38 @@
+#!/bin/bash
+VERSION='0.1.0';# Created: 2016-01-20
+set -o nounset     # Die if any variable is unset
+set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+
+VOLUME=/opt/syncthing
+
+if [ "${AUDIT:-0}" = "1" ]; then
+    AUDIT_OPTION=-audit
+else
+    AUDIT_OPTION=""
+fi
+
+# Create /etc
+# -----------
+[ -d "$VOLUME/etc" ] || /docker/init
+
+find "$VOLUME/etc" -name "index-*.db" -o -name csrftokens.txt -exec chown -R syncthing:syncthing {} +
+
+# Create /log
+# -----------
+if ! [ -d "$VOLUME/log" ]; then
+    mkdir "$VOLUME/log"
+    chown syncthing:syncthing "$VOLUME/log"
+fi
+
+[ -f "$VOLUME/log/syncthing.log" ] && chown syncthing "$VOLUME/log/syncthing.log"
+
+# Go!
+# ---
+HOME="$VOLUME"
+exec /usr/bin/perl -MPOSIX -e 'POSIX::setuid($ENV{UID_SYNCTHING}); exec @ARGV' -- \
+     syncthing \
+     -home="$VOLUME/etc" \
+     -logfile="$VOLUME/log/syncthing.log" \
+     -no-browser \
+     -no-restart \
+     $AUDIT_OPTION

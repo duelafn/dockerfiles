@@ -1,0 +1,54 @@
+
+FROM debian:jessie
+MAINTAINER Dean Serenevy <dean@serenevy.net>
+
+
+# CONFIGURATION
+#--------------
+VOLUME ["/opt/syncthing"]
+
+
+# BUILDING
+#---------
+INCLUDE ../_includes/00_prepare.docker
+
+ENV UID_SYNCTHING 2003
+ENV GID_SYNCTHING 2003
+
+INCLUDE ../_includes/05_localenv.docker
+INCLUDE ../_includes/10_setup.docker
+
+# MAIN
+#-----
+RUN addgroup --gid $GID_SYNCTHING syncthing
+RUN adduser                 \
+    --home /opt/syncthing   \
+    --shell /bin/false      \
+    --no-create-home        \
+    --uid $UID_SYNCTHING    \
+    --gid $GID_SYNCTHING    \
+    --disabled-password     \
+    --disabled-login        \
+    syncthing
+
+COPY syncthing.gpg  /tmp/syncthing.gpg
+RUN  apt-key add    /tmp/syncthing.gpg
+COPY syncthing.list /etc/apt/sources.list.d/syncthing.list
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    syncthing \
+ && apt-get clean
+
+COPY docker /docker
+
+
+# CLEANUP
+#--------
+INCLUDE ../_includes/99_cleanup.docker
+
+
+# RUNNING
+#--------
+EXPOSE 8384 22000 21025/udp
+
+CMD exec docker/run

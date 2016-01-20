@@ -1,0 +1,26 @@
+#!/bin/bash
+VERSION='0.1.0';# Created: 2016-01-20
+set -o nounset     # Die if any variable is unset
+set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+
+VOLUME=/opt/syncthing
+
+# Create /etc
+# -----------
+if ! [ -d "$VOLUME/etc" ]; then
+    mkdir "$VOLUME/etc"
+    chown -R syncthing:syncthing "$VOLUME/etc"
+fi
+
+find "$VOLUME/etc" -name "index-*.db" -o -name csrftokens.txt -exec chown -R syncthing:syncthing {} +
+
+# Generate keys and config
+# ------------------------
+HOME="$VOLUME"
+/usr/bin/perl -MPOSIX -e 'POSIX::setuid($ENV{UID_SYNCTHING}); exec @ARGV' -- \
+     syncthing \
+     -generate="$VOLUME/etc"
+
+# Fix config to listen to host
+# ----------------------------
+perl -pi -E 's#^\s*\K<address>127\.0\.0\.1:8384</address>#<address>0.0.0.0:8384</address>#' "$VOLUME/etc/config.xml"
