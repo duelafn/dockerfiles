@@ -18,7 +18,7 @@ release: build
 	docker images | perl -ne'print if 1==$$. or m#${REPOSITORY}#'
 
 commit: bump_revision
-	$(make) release
+	$(MAKE) release
 
 upgrade: check-name
 	docker exec -it ${NAME} sh -c 'apt-get update && apt-get -u dist-upgrade --assume-no' | grep -q 'Do you want to continue'
