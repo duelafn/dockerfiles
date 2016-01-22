@@ -46,7 +46,7 @@ OPTIONS
 THE UPGRADE FILE
 
 By default, reads:
-   <bindir>/../_etc/upgrade.conf
+   <bindir>/../upgrade.conf
 
 File is a YAML-formatted config file consisting of several specific
 entries.
@@ -205,7 +205,7 @@ sub pull_image {
 sub guess_config {
     my $opt = shift;
     return $$opt{config} if $$opt{config};
-    my ($file) = grep -f $_, "$FindBin::Bin/../_etc/upgrade.conf";
+    my ($file) = grep -f $_, "$FindBin::Bin/../upgrade.conf";
     return $file;
 }
 
