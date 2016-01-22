@@ -1,0 +1,55 @@
+
+services:
+  # Restart database containers first so they are ready when
+  # applications reload later.
+  - docker-osticket-data:
+      osticket-data: mariadb
+
+  - docker-timeclock-data:
+      timeclock-data: mariadb
+
+  - docker-gitolite:
+      gitolite: gitolite
+
+  - docker-puppet3:
+      puppet3: puppet
+
+  - docker-redis:
+      redis: redis
+#   - gitolite-redis-reloader
+
+  - docker-ssh-backup:
+      ssh-backup: sshd
+
+  - docker-ssh-proxy:
+      ssh-proxy: sshd
+
+  - docker-osticket:
+      osticket-data: mariadb
+      osticket: osticket
+  - ":MSG Not Upgraded: osticket PHP app (external resource)"
+
+  - docker-timeclock:
+      timeclock-data: mariadb
+      timeclock: timecard
+  - ":MSG Not Upgraded: timeclock PHP app (external resource)"
+
+#   - ":RELOAD nginx"
+
+
+pull-images:
+  "debian:jessie": "debian:latest"
+
+image-build-order:
+  - starman
+  - catalyst
+
+config:
+  build-path: /home/deans/docker
+  build-user: "deans:docker"
+  restart: 1
+
+
+### Local Variables:
+### mode: yaml
+### End:
