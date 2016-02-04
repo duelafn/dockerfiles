@@ -1,0 +1,71 @@
+#!/bin/bash
+VERSION='0.1.0';# Created: 2016-02-03
+set -o nounset     # Die if any variable is unset
+set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+
+ETC_DIR=/opt/opencart/etc
+LOG_DIR=/opt/opencart/log
+# DATA_DIR=/opt/opencart/data
+SRC_DIR=/opt/opencart/src
+WWW_DIR=/opt/opencart/www
+
+# ssmtp needs updated host name:
+hname=`hostname`
+[ -z "$hname"   ] || sed -i "/^#\\?hostname/chostname=$hname" /etc/ssmtp/ssmtp.conf
+[ -z "$MAILHUB" ] || sed -i "/^#\\?mailhub/cmailhub=$MAILHUB" /etc/ssmtp/ssmtp.conf
+
+# apache configuration
+install -d -o root -g root "$ETC_DIR" "$LOG_DIR"
+
+[ -d "$WWW_DIR" ] || (
+    [ -d "$SRC_DIR" ] || git clone https://github.com/opencart/opencart.git "$SRC_DIR"
+    cp -r "$SRC_DIR/upload" "$WWW_DIR"
+)
+
+install -d -o www-data -g www-data  "$WWW_DIR/system/storage"/{cache,logs,download,upload,modification}
+install -d -o www-data -g www-data  "$WWW_DIR/image"/{,cache,catalog}
+[ -f "$WWW_DIR/config.php" ]       || install -o www-data -g www-data "$WWW_DIR/config-dist.php" "$WWW_DIR/config.php"
+[ -f "$WWW_DIR/admin/config.php" ] || install -o www-data -g www-data "$WWW_DIR/admin/config-dist.php" "$WWW_DIR/admin/config.php"
+
+chown www-data:www-data "$WWW_DIR/config.php" "$WWW_DIR/admin/config.php"
+
+[ -f "$ETC_DIR/apache.conf" ] || cat <<EOF > "$ETC_DIR/apache.conf"
+<VirtualHost *:80>
+    ServerAdmin $APACHE_SERVERADMIN
+    ServerName $APACHE_SERVERNAME
+    ServerAlias $APACHE_SERVERALIAS
+
+    CustomLog $LOG_DIR/access.log combined
+    ErrorLog  $LOG_DIR/error.log
+
+    DocumentRoot $WWW_DIR
+    <Directory "$WWW_DIR">
+        Options -Indexes +FollowSymLinks
+
+        RewriteEngine On
+        RewriteBase /
+        RewriteRule ^sitemap.xml\$ index.php?route=feed/google_sitemap [L]
+        RewriteRule ^googlebase.xml\$ index.php?route=feed/google_base [L]
+        RewriteRule ^system/download/(.*) index.php?route=error/not_found [L]
+        RewriteCond %{REQUEST_FILENAME} !-f
+        RewriteCond %{REQUEST_FILENAME} !-d
+        RewriteCond %{REQUEST_URI} !.*\\.(ico|gif|jpg|jpeg|png|js|css)
+        RewriteRule ^([^?]*) index.php?_route_=\$1 [L,QSA]
+
+        AllowOverride None
+        Require all granted
+        Order allow,deny
+        Allow from all
+    </Directory>
+
+    # Prevent Direct Access to files
+    <FilesMatch "(?i)((\\.tpl|\\.ini|\\.log|(?<!robots)\\.txt))">
+        Require all denied
+    </FilesMatch>
+
+    RedirectMatch 404 /\\.git
+    RedirectMatch 404 /\\.ht
+</VirtualHost>
+EOF
+
+exec /usr/sbin/apache2 -DFOREGROUND
