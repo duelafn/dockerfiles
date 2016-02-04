@@ -6,7 +6,7 @@
 
 
 Dockerfile: Dockerfile.in ../_includes/* ${LOCALENV}
-	perl -MFile::Slurp -ne 'print /^INCLUDE\s+(.*)/ ? read_file("$$1") : $$_' $< >$@
+	perl -MFile::Slurp -ne 'print /^INCLUDE(\??)\s+(.*)/ ? read_file("$$2", err_mode => ($$1 ? "quiet" : "croak")) : $$_' $< >$@
 
 build: Dockerfile
 	docker build --rm -t ${CONTAINER} .
