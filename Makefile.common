@@ -12,7 +12,7 @@ build: Dockerfile
 	docker build --rm -t ${CONTAINER} .
 	docker images | perl -ne'print if 1==$$. or m#${CONTAINER}#'
 
-release: build
+release: build revision
 	docker tag -f ${CONTAINER} ${REPOSITORY}:latest
 	docker tag -f ${CONTAINER} ${REPOSITORY}:r$$(cat revision)
 	docker images | perl -ne'print if 1==$$. or m#${REPOSITORY}#'
@@ -24,7 +24,7 @@ upgrade: check-name
 	docker exec -it ${NAME} sh -c 'apt-get update && apt-get -u dist-upgrade --assume-no' | grep -q 'Do you want to continue'
 	$(MAKE) force-upgrade
 
-force-upgrade: Dockerfile
+force-upgrade: Dockerfile revision
 	$(MAKE) bump_update
 	docker build -q --rm --no-cache=true -t ${CONTAINER} .
 	docker tag -f ${CONTAINER} ${REPOSITORY}:latest
