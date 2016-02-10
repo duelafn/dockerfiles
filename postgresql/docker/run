@@ -1,6 +1,4 @@
 #!/bin/bash
-# `pgdo` works like sudo, but runs as postgres user and also preserves PID (and probably ENV vars)
-. /docker/functions
 
 VOL="/opt/postgresql"
 PGDATA="$VOL/data"
@@ -11,19 +9,21 @@ MAINCONF="$VOL/conf/main"
 SRCDIR="/etc/postgresql/tmpl/main"
 # Probably only a single one, but take the last one just in case
 PGSERVER="$(find /usr/lib/postgresql -name postgres | tail -n1)"
+INITDB="${PGSERVER%postgres}initdb"
 
 export PGDATA
 
 # Directories
-[ -d "$LOGDIR" ]      || install -d -u postgres -g postgres -m 0755 "$LOGDIR"
-[ -d "$CONFDIR" ]     || install -d -u postgres -g postgres -m 0755 "$CONFDIR"
-[ -d "$MAINCONF" ]    || install -d -u postgres -g postgres -m 0755 "$MAINCONF"
-[ -d "$CONFDIR/ssl" ] || install -d -u root     -g root     -m 0755 "$CONFDIR/ssl"
+[ -d "$LOGDIR" ]      || install -d -o postgres -g postgres -m 0755 "$LOGDIR"
+[ -d "$CONFDIR" ]     || install -d -o postgres -g postgres -m 0755 "$CONFDIR"
+[ -d "$MAINCONF" ]    || install -d -o postgres -g postgres -m 0755 "$MAINCONF"
+[ -d "$CONFDIR/ssl" ] || install -d -o root     -g root     -m 0755 "$CONFDIR/ssl"
+install -d -o postgres -g postgres -m 0750 "/var/run/postgresql/stat_tmp"
 
 # Snakeoil Certificate
 if [ ! -f "$CONFDIR/ssl/private/ssl-cert-snakeoil.key" ]; then
-    [ -d "$CONFDIR/ssl/certs" ]    || install -d -u root     -g root     -m 0755 "$CONFDIR/ssl/certs"
-    [ -d "$CONFDIR/ssl/private" ]  || install -d -u root     -g ssl-cert -m 0710 "$CONFDIR/ssl/private"
+    [ -d "$CONFDIR/ssl/certs" ]    || install -d -o root     -g root     -m 0755 "$CONFDIR/ssl/certs"
+    [ -d "$CONFDIR/ssl/private" ]  || install -d -o root     -g ssl-cert -m 0710 "$CONFDIR/ssl/private"
 
     # Regnerate else, everyone knows our key!
     make-ssl-cert generate-default-snakeoil --force-overwrite
@@ -33,16 +33,19 @@ if [ ! -f "$CONFDIR/ssl/private/ssl-cert-snakeoil.key" ]; then
 fi
 
 # Configuration Files
-[ -f "$MAINCONF/pg_hba.conf" ]     || install    -u postgres -g postgres -m 0640 "$SRCDIR/pg_hba.conf"     "$MAINCONF/pg_hba.conf"
-[ -f "$MAINCONF/pg_ident.conf" ]   || install    -u postgres -g postgres -m 0640 "$SRCDIR/pg_ident.conf"   "$MAINCONF/pg_ident.conf"
-[ -f "$MAINCONF/postgresql.conf" ] || install    -u postgres -g postgres -m 0644 "$SRCDIR/postgresql.conf" "$MAINCONF/postgresql.conf"
+perl -pi -e "s#<%VOLUME%>#$VOL#g"  "$SRCDIR"/*.conf
+[ -f "$MAINCONF/pg_hba.conf" ]     || install    -o postgres -g postgres -m 0640 "$SRCDIR/pg_hba.conf"     "$MAINCONF/pg_hba.conf"
+[ -f "$MAINCONF/pg_ident.conf" ]   || install    -o postgres -g postgres -m 0640 "$SRCDIR/pg_ident.conf"   "$MAINCONF/pg_ident.conf"
+[ -f "$MAINCONF/postgresql.conf" ] || install    -o postgres -g postgres -m 0644 "$SRCDIR/postgresql.conf" "$MAINCONF/postgresql.conf"
 
 # Initialize a database
 if ([ ! -d "$PGDATA" ] || find "$PGDATA" -maxdepth 0 -empty | grep -q .); then
+    install -d -o postgres -g postgres -m 0750 "$PGDATA"
+
     # arguments taken from settings in Debian's pg_createcluster
     # Probably only work for postgres 9.1 or greater.
-    pgdo initdb  --auth-local peer  --auth-host md5
+    sudo -u postgres "PGDATA=$PGDATA"  "$INITDB"  --auth-local peer  --auth-host md5
 fi
 
-# Launch!
-exec pgdo "$PGSERVER" -c config_file="$CONFDIR/postgresql.conf"
+# Run as postgres user and also preserves PID (and probably ENV vars)
+exec perl -MPOSIX -e 'POSIX::setuid($ENV{UID_POSTGRES}); exec @ARGV' -- "$PGSERVER" -c config_file="$MAINCONF/postgresql.conf"

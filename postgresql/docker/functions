@@ -1,5 +1,0 @@
-#!/bin/sh
-
-# `sudo` doesn't preserve PID and it is convenient to have the daemon run
-# on PID 1 so we make our own sudo.
-pgdo() { perl -MPOSIX -e 'POSIX::setuid($ENV{UID_POSTGRES}); exec @ARGV' -- "$@"; }
