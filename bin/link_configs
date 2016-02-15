@@ -22,9 +22,11 @@ use strict; use warnings; use 5.014;
 
 use Getopt::Long qw/:config bundling/;
 use Hash::Util qw/ lock_keys /;
-our $VERSION = '1.0.0';# Created: 2016-01-21
+our $VERSION = '1.1.0';# Created: 2016-01-21
 
-our %OPT = (  );
+our %OPT = (
+    locals => [qw/ localenv postinstall /],
+);
 our @OPT_SPEC =
 qw/ help|h version noact|no-act|dry-run DEBUG
     replace
@@ -33,13 +35,14 @@ sub USAGE { <<"__USAGE__" };
 usage: $_[0] [options] SOURCE [TARGET]
 
 Create symlinks in the target directory pointing to the configuration
-source directory. Links all relevant `localenv.docker` and `upgrade.conf`
-files.
+source directory. Links all relevant `localenv.docker`,
+`postinstall.docker`, and `upgrade.conf` files.
 
   TARGET defaults to the current working directory
 
-This makes it easier to maintain custom localenv.docker files in a separate
-repository from the general-use dockerfiles.
+This makes it easier to maintain custom localenv.docker and
+postinstall.docker files in a separate repository from the general-use
+dockerfiles.
 
 This script will not overwrite existing files or links so is safe to call
 more than once unless the --replace option is passed.
@@ -61,7 +64,8 @@ SOURCE DIRECTORY LAYOUT
    docker-conf
    ├── puppet
    │   ├── localenv.docker
-   │   └── localenv.docker.tsalmoth
+   │   ├── localenv.docker.tsalmoth
+   │   └── postinstall.docker
    └── upgrade
        ├── upgrade.conf.jhegaala
        ├── upgrade.conf.orca
@@ -102,7 +106,7 @@ sub MAIN {
     # Ensure absolute
     $_ = rel2abs($_), for $source, $target;
 
-    link_localenv($source, $target);
+    link_locals($source, $target, $OPT{locals});
     link_update($source, $target);
 }
 
@@ -117,20 +121,23 @@ sub link_update {
     SYMLINK abs2rel($orig, $target), $link if -d $target;
 }
 
-sub link_localenv {
-    my ($source, $target) = @_;
+sub link_locals {
+    my ($source, $target, $locals) = @_;
     my $hostname = hostname;
 
     my $wanted = sub {
         my $relpath = abs2rel($File::Find::name, $source);
         my ($vol, $dir, $file) = splitpath($relpath);
-        # Searching only for localenv.docker or localenv.docker.HOSTNAME
-        return unless $file =~ /^localenv\.docker(?:\.\Q$hostname\E)?$/;
-        # Skip localenv.docker if localenv.docker.HOSTNAME exists
-        return if $file eq 'localenv.docker' and -e "$File::Find::name.$hostname";
+
+        # Searching only for $local.docker or $local.docker.HOSTNAME
+        my ($local) = grep $file =~ /^\Q$_\E\.docker(?:\.\Q$hostname\E)?$/, @$locals;
+        return unless $local;
+
+        # Skip $local.docker if $local.docker.HOSTNAME exists
+        return if $file eq "$local.docker" and -e "$File::Find::name.$hostname";
 
         my $parent = catdir($target, $dir);
-        my $link   = catfile($target, $dir, 'localenv.docker');
+        my $link   = catfile($target, $dir, "$local.docker");
 
         SYMLINK abs2rel($File::Find::name, $parent), $link if -d $parent;
     };
