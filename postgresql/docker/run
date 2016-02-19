@@ -5,6 +5,8 @@ PGDATA="$VOL/data"
 CONFDIR="$VOL/conf"
 LOGDIR="$VOL/log"
 
+: ${ENCODING:=UTF-8}
+
 MAINCONF="$VOL/conf/main"
 SRCDIR="/etc/postgresql/tmpl/main"
 # Probably only a single one, but take the last one just in case
@@ -44,8 +46,8 @@ if ([ ! -d "$PGDATA" ] || find "$PGDATA" -maxdepth 0 -empty | grep -q .); then
 
     # arguments taken from settings in Debian's pg_createcluster
     # Probably only work for postgres 9.1 or greater.
-    sudo -u postgres "PGDATA=$PGDATA"  "$INITDB"  --auth-local peer  --auth-host md5
+    sudo -u postgres "PGDATA=$PGDATA"  "$INITDB"  --auth-local peer  --auth-host md5  -E "$ENCODING"
 fi
 
-# Run as postgres user and also preserves PID (and probably ENV vars)
+# Run as postgres user and also preserves PID and ENV vars
 exec perl -MPOSIX -e 'POSIX::setuid($ENV{UID_POSTGRES}); exec @ARGV' -- "$PGSERVER" -c config_file="$MAINCONF/postgresql.conf"

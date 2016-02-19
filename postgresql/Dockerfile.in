@@ -42,6 +42,7 @@ RUN rm -rf /var/lib/postgresql
 RUN PG_ETC="$(find /etc/postgresql -maxdepth 1 -mindepth 1 -type d | tail -n1)"; mv $PG_ETC /etc/postgresql/tmpl; ln -s /opt/postgresql/conf $PG_ETC
 
 RUN sed -i "/^#*stats_temp_directory[ =]/cstats_temp_directory = '/var/run/postgresql/stat_tmp'"  /etc/postgresql/tmpl/main/postgresql.conf
+RUN sed -i "/^#*listen_addresses[ =]/clisten_addresses = '*'"                                     /etc/postgresql/tmpl/main/postgresql.conf
 RUN sed -i "/^data_directory[ =]/cdata_directory = '<%VOLUME%>/data'"                             /etc/postgresql/tmpl/main/postgresql.conf
 RUN sed -i "/^ssl[ =]/cssl = false"                                                               /etc/postgresql/tmpl/main/postgresql.conf
 RUN perl -pi -e "s#/etc/ssl#<%VOLUME%>/conf/ssl#"                                                 /etc/postgresql/tmpl/main/postgresql.conf
