@@ -8,15 +8,34 @@ do not exist and will initialize the database if one does not exist.
 On the first run when the database is initialized, the encoding can be set
 via the `ENCODING` environment variable. The default encoding is UTF-8.
 
+Granting Access
+---------------
 
-Running the Volume
-==================
+The default configuration will not grant any usable access rights. You will
+need to either expose a unix socket, or configure `pg_hba.conf` to grant
+access across the network.
 
-If you wish to export the postgres socket to a non-standard location, set
-the `unix_socket_directories` to the non standard location in
-postgresql.conf in addition to its default value. For example:
+### unix socket
+
+To export the postgres, set `unix_socket_directories` in postgresql.conf to
+your desired location *in addition to* its default value. For example:
 
     unix_socket_directories = '/var/run/postgresql,/opt/postgres/sock'
+
+If you do not include the default path, then command-line actions such as
+`createdb` or `pg_dumpall` will not work.
+
+### network access
+
+To allow password access to linked docker images, you can use the following
+configuration (execute from within the volume path after the first run of
+the container). There is no need to expose the port 5432 if you are linking
+containers.
+
+    echo "host   all   all   samenet   md5" | sudo tee -a conf/main/pg_hba.conf
+
+To permit external access, expose port 5432 and edit conf/main/pg_hba.conf
+appropriately.
 
 
 Backups and Maintenance
