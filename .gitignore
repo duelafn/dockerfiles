@@ -3,6 +3,7 @@
 /upgrade.conf
 
 05_localenv.docker
-localenv.docker
 Dockerfile
+localenv.docker
+postinstall.docker
 sample.service
