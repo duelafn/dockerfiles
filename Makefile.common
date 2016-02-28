@@ -1,11 +1,12 @@
 
+DOCKER_INCLUDES=$(wildcard *.docker)
 
 .PHONY: build check-name
 .PHONY: bump_revision commit
 .PHONY: bump_update upgrade force-upgrade
 
 
-Dockerfile: Dockerfile.in ../_includes/* ${LOCALENV} *.docker
+Dockerfile: Dockerfile.in ../_includes/* ${LOCALENV} ${DOCKER_INCLUDES}
 	perl -MFile::Slurp -ne 'print /^INCLUDE(\??)\s+(.*)/ ? read_file("$$2", err_mode => ($$1 ? "quiet" : "croak")) : $$_' $< >$@
 
 build: Dockerfile
