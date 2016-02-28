@@ -5,7 +5,7 @@
 .PHONY: bump_update upgrade force-upgrade
 
 
-Dockerfile: Dockerfile.in ../_includes/* ${LOCALENV}
+Dockerfile: Dockerfile.in ../_includes/* ${LOCALENV} *.docker
 	perl -MFile::Slurp -ne 'print /^INCLUDE(\??)\s+(.*)/ ? read_file("$$2", err_mode => ($$1 ? "quiet" : "croak")) : $$_' $< >$@
 
 build: Dockerfile
