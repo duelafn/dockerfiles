@@ -1,0 +1,76 @@
+#!/bin/bash
+VERSION='0.1.0';# Created: 2016-02-13
+set -o nounset     # Die if any variable is unset
+set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+
+VOLUME=/www
+
+ETC_DIR=$VOLUME/etc
+LOG_DIR=$VOLUME/log
+
+# enable modules
+for mod in $MODS_ENABLED; do
+    a2enmod "$mod" >/dev/null
+done
+
+# link user templates to ledgersmb directory
+if [ -d "$VOLUME/templates" ]; then
+    pushd "$VOLUME/templates" >/dev/null
+    for d in *; do
+        [ -d "$d" ] && ln -s "$VOLUME/templates/$d" /usr/share/ledgersmb/templates/
+    done
+    popd >/dev/null
+fi
+
+# ledgersmb configuration
+[ -f "$ETC_DIR/ledgersmb.conf" ] || cp /etc/ledgersmb/ledgersmb.conf.default "$ETC_DIR/ledgersmb.conf"
+install -d -o www-data -g www-data "$VOLUME/spool"
+
+# ssmtp needs updated host name:
+hname=`hostname`
+[ -z "$hname"   ] || sed -i "/^#\\?hostname/chostname=$hname" /etc/ssmtp/ssmtp.conf
+[ -z "$MAILHUB" ] || sed -i "/^#\\?mailhub/cmailhub=$MAILHUB" /etc/ssmtp/ssmtp.conf
+
+# apache configuration
+[ -d "$ETC_DIR" ] || install -d -o root -g root "$ETC_DIR"
+[ -d "$LOG_DIR" ] || install -d -o root -g root "$LOG_DIR"
+
+[ -f "$ETC_DIR/site.conf" ] || cat <<EOF > "$ETC_DIR/site.conf"
+<VirtualHost *:80>
+    ServerName  $hname
+    ServerAlias www.$hname
+    DocumentRoot /usr/share/ledgersmb
+
+    CustomLog $LOG_DIR/access.log combined
+    ErrorLog  $LOG_DIR/error.log
+
+    <Directory /usr/share/ledgersmb>
+        AddHandler cgi-script .pl
+        Options ExecCGI Includes FollowSymlinks
+        AllowOverride None
+        Require all granted
+
+        <Files ~ "\.conf$">
+            Require all denied
+        </Files>
+    </Directory>
+
+    <Directory /usr/share/ledgersmb/users>
+         Require all denied
+    </Directory>
+    <Directory /usr/share/ledgersmb/bin>
+         Require all denied
+    </Directory>
+    <Directory /usr/share/ledgersmb/utils>
+         Require all denied
+    </Directory>
+    <Directory /usr/share/ledgersmb/spool>
+         Require all denied
+    </Directory>
+    <Directory /usr/share/ledgersmb/LedgerSMB>
+         Require all denied
+    </Directory>
+</VirtualHost>
+EOF
+
+exec /usr/sbin/apache2 -DFOREGROUND
