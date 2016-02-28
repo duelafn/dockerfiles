@@ -1,4 +1,9 @@
 
+Running the container
+=====================
+
+    docker run --rm  -h example.com  -v /srv/mysite/data:/opt/postgresql --name postgresql  duelafn/postgresql:latest
+
 Volume Initialization
 =====================
 
@@ -45,15 +50,15 @@ Remember to execute commands as the `postgres` user when connecting.
 
 Docker >= 1.7:
 
-    docker exec -u postgres CONTAINER-NAME createuser ...
-    docker exec -u postgres CONTAINER-NAME createdb   ...
-    docker exec -u postgres CONTAINER-NAME pg_dumpall > backup.sql
+    docker exec -it -u postgres CONTAINER-NAME createuser ...
+    docker exec -it -u postgres CONTAINER-NAME createdb   ...
+    docker exec -it -u postgres CONTAINER-NAME pg_dumpall > backup.sql
 
 Docker without `-u` exec option:
 
-    docker exec sudo -u postgres CONTAINER-NAME createuser ...
-    docker exec sudo -u postgres CONTAINER-NAME createdb   ...
-    docker exec sudo -u postgres CONTAINER-NAME pg_dumpall > backup.sql
+    docker exec -it CONTAINER-NAME sudo -u postgres createuser ...
+    docker exec -it CONTAINER-NAME sudo -u postgres createdb   ...
+    docker exec -it CONTAINER-NAME sudo -u postgres pg_dumpall > backup.sql
 
 
 Volume Layout
