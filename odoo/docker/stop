@@ -1,0 +1,7 @@
+#!/bin/bash
+VERSION='0.1.0';# Created: 2016-02-05
+set -o nounset     # Die if any variable is unset
+set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+
+VOLUME=/opt/odoo
+

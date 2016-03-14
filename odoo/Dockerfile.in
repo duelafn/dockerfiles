@@ -1,0 +1,91 @@
+
+FROM debian:jessie
+MAINTAINER Dean Serenevy <dean@serenevy.net>
+
+
+# CONFIGURATION
+#--------------
+VOLUME ["/opt/odoo"]
+
+
+# BUILDING
+#---------
+INCLUDE ../_includes/00_prepare.docker
+
+# When links break, see https://github.com/odoo/docker/blob/master/9.0/Dockerfile for updates
+ENV ODOO_VERSION       9.0
+ENV ODOO_KEY           0x5D134C924CB06330DCEFE2A1DEF2A2198183CBB5
+ENV ODOO_REPO          deb http://nightly.odoo.com/${ODOO_VERSION}/nightly/deb/ ./
+ENV WKHTMLTOX_URL      http://nightly.odoo.com/extra/wkhtmltox-0.12.1.2_linux-jessie-amd64.deb
+ENV WKHTMLTOX_SHASUM   40e8b906de658a2221b15e4e8cd82565a47d7ee8
+ENV UID_ODOO           2004
+ENV GID_ODOO           2004
+
+INCLUDE ../_includes/05_localenv.docker
+
+INCLUDE? localenv.docker
+
+INCLUDE ../_includes/10_setup.docker
+
+# MAIN
+#-----
+RUN addgroup --gid $GID_ODOO odoo
+RUN adduser                 \
+    --home /opt/odoo        \
+    --shell /bin/false      \
+    --no-create-home        \
+    --uid $UID_ODOO         \
+    --gid $GID_ODOO         \
+    --disabled-password     \
+    --disabled-login        \
+    odoo
+
+RUN mkdir -p /var/lib/odoo
+
+RUN apt-key adv --keyserver pgp.mit.edu --recv-keys "$ODOO_KEY"
+
+RUN echo "$ODOO_REPO" | tee /etc/apt/sources.list.d/odoo.list
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    antiword         \
+    ca-certificates  \
+    curl             \
+    ghostscript      \
+    graphviz         \
+    odoo             \
+    poppler-utils    \
+    python-gevent    \
+    python-pyinotify \
+    python-renderpm  \
+    python-support   \
+    sudo             \
+ && apt-get clean
+
+# This file is missing in 9.0 series
+COPY openerp-gevent /usr/bin/openerp-gevent
+
+WORKDIR /tmp
+
+RUN  curl "$WKHTMLTOX_URL"  -o wkhtmltox.deb
+# COPY wkhtmltox-0.12.1.2_linux-jessie-amd64.deb /tmp/wkhtmltox.deb
+
+RUN echo curl -o wkhtmltox.deb -SL "$WKHTMLTOX_URL" \
+ && echo "$WKHTMLTOX_SHASUM wkhtmltox.deb" | sha1sum -c - \
+ && dpkg --force-depends -i wkhtmltox.deb \
+ && apt-get -y install -f --no-install-recommends \
+ && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false -o APT::AutoRemove::SuggestsImportant=false npm
+
+
+COPY docker /docker
+
+# CLEANUP
+#--------
+INCLUDE ../_includes/99_cleanup.docker
+
+# RUNNING
+#--------
+EXPOSE 8069 8071
+
+WORKDIR /opt/odoo
+
+CMD exec /docker/run

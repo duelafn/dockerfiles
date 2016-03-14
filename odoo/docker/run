@@ -1,0 +1,19 @@
+#!/bin/bash
+VERSION='0.1.0';# Created: 2016-02-05
+set -o nounset     # Die if any variable is unset
+set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+
+VOLUME=/opt/odoo
+
+install -d -o root -g root "$VOLUME/addons"
+install -d -o root -g root "$VOLUME/conf"
+
+install -d -o odoo -g odoo "$VOLUME/cache"
+install -d -o odoo -g odoo "$VOLUME/log"
+
+if ! [ -f "$VOLUME/conf/odoo.conf" ]; then
+    cp /docker/odoo.conf "$VOLUME/conf/"
+    sed "/^; admin_passwd/cadmin_passwd = $(python -c 'import base64, os; print(base64.b64encode(os.urandom(24)))')" "$VOLUME/conf/odoo.conf"
+fi
+
+exec sudo -u odoo odoo.py --config /opt/odoo/conf/odoo.conf
