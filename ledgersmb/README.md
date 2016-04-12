@@ -1,10 +1,14 @@
 
+NOTE: I am currently using this with an older version of ledgersmb (v1.2)
+so am not sure whether it is a sufficient base for a more recent ledgersmb.
+
+
 Volume Initialization
 =====================
 
 Link to a postgresql instance with a configured superuser.
 
-    docker run --rm  -h ledger.serenevy.net  -v /srv/ledgersmb:/www --name ledgersmb --link ledgersmb-data:ledgersmb-data -p 127.0.0.1:80:80 duelafn/ledgersmb:latest
+    docker run --rm  -h ledger.example.com  -v /srv/ledgersmb:/www --name ledgersmb --link ledgersmb-data:ledgersmb-data -p 127.0.0.1:80:80 duelafn/ledgersmb:latest
 
 On first run, some directories will be created and sampel configuration
 files will be copied (if not already present). Configs may be modified and
