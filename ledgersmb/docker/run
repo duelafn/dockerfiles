@@ -8,6 +8,10 @@ VOLUME=/www
 ETC_DIR=$VOLUME/etc
 LOG_DIR=$VOLUME/log
 
+# create directories
+[ -d "$ETC_DIR" ] || install -d -o root -g root "$ETC_DIR"
+[ -d "$LOG_DIR" ] || install -d -o root -g root "$LOG_DIR"
+
 # enable modules
 for mod in $MODS_ENABLED; do
     a2enmod "$mod" >/dev/null
@@ -26,14 +30,25 @@ fi
 [ -f "$ETC_DIR/ledgersmb.conf" ] || cp /etc/ledgersmb/ledgersmb.conf.default "$ETC_DIR/ledgersmb.conf"
 install -d -o www-data -g www-data "$VOLUME/spool"
 
+# Ensure database initialized
+# Need to store password safely:
+touch /root/.pgpass
+chmod 600 /root/.pgpass
+perl -F'\s*=\s*' -E 'chomp(@F); $x{$F[0]} = $F[1]; END { say "$x{DBhost}:$x{DBport}:$x{DBname}:$x{DBUserName}:$x{DBPassword}" }' /www/etc/ledgersmb.conf >/root/.pgpass
+# Useful shortcuts
+pgf()   { awk -F: "{print\$$1}" /root/.pgpass; }
+plsmb() { psql -q -t -w -h "$(pgf 1)" -p "$(pgf 2)"  "$(pgf 3)" "$(pgf 4)"; }
+if (echo 'SELECT 1' | plsmb >/dev/null 2>&1); then
+    if ! (echo '\dt' | plsmb | grep users_conf >/dev/null 2>&1); then
+        # Modern postgres requires lower-case 'sql'
+        perl -pe 's/\$\$ LANGUAGE '\''\KSQL'\'';$/sql'\'';/' /usr/share/ledgersmb/sql/Pg-central.sql | plsmb
+    fi
+fi
+
 # ssmtp needs updated host name:
 hname=`hostname`
 [ -z "$hname"   ] || sed -i "/^#\\?hostname/chostname=$hname" /etc/ssmtp/ssmtp.conf
 [ -z "$MAILHUB" ] || sed -i "/^#\\?mailhub/cmailhub=$MAILHUB" /etc/ssmtp/ssmtp.conf
-
-# apache configuration
-[ -d "$ETC_DIR" ] || install -d -o root -g root "$ETC_DIR"
-[ -d "$LOG_DIR" ] || install -d -o root -g root "$LOG_DIR"
 
 [ -f "$ETC_DIR/site.conf" ] || cat <<EOF > "$ETC_DIR/site.conf"
 <VirtualHost *:80>
