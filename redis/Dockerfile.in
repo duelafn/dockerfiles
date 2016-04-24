@@ -36,9 +36,12 @@ RUN adduser                     \
     --disabled-login            \
     redis
 
-RUN  apt-get update && apt-get install -y --no-install-recommends \
+RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) -- \
+ apt-get install -y --no-install-recommends \
      redis-server   \
-     sudo
+     sudo           \
+ && apt-get clean'
+
 
 RUN sed -i '/^daemonize\s/cdaemonize no'                           /etc/redis/redis.conf
 RUN sed -i '/^bind\s/d'                                            /etc/redis/redis.conf

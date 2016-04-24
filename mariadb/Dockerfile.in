@@ -34,9 +34,10 @@ RUN adduser --system        \
     --disabled-login        \
     mysql
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) -- \
+ apt-get install -y --no-install-recommends \
     mariadb-server \
- && apt-get clean
+ && apt-get clean'
 
 COPY docker /docker
 

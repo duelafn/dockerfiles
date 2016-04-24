@@ -19,3 +19,6 @@ ENV TERM linux
 
 # Need some base locales (append any others in 05_localenv,docker)
 RUN echo "en_US ISO-8859-1" >/etc/locale.gen && echo "en_US.UTF-8 UTF-8" >>/etc/locale.gen
+
+# List of additional packages to install
+RUN touch /tmp/apt.install

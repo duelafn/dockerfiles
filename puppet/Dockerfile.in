@@ -49,11 +49,13 @@ RUN adduser --system        \
     --disabled-login        \
     puppet
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) -- \
+ apt-get install -y --no-install-recommends \
     puppet-module-puppetlabs-inifile \
     puppet-module-puppetlabs-stdlib  \
     puppetmaster-passenger           \
-    ruby-rgen
+    ruby-rgen                        \
+ && apt-get clean'
 
 # Puppet doesn't really allow changing the config file, it MUST be at
 # /etc/puppet/puppet.conf (puppet cert list doesn't recognize --config or

@@ -36,11 +36,13 @@ RUN adduser                  \
     --disabled-login         \
     git
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) -- \
+ apt-get install -y --no-install-recommends \
     gitolite3             \
     redis-tools           \
     ssh                   \
-    sudo
+    sudo                  \
+ && apt-get clean'
 
 RUN mkdir /var/run/sshd
 

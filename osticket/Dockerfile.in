@@ -37,7 +37,8 @@ INCLUDE ../_includes/10_setup.docker
 
 # MAIN
 #-----
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) -- \
+ apt-get install -y --no-install-recommends \
     apache2              \
     git                  \
     libapache2-mod-php5  \
@@ -48,7 +49,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     php5-json            \
     php5-mysql           \
     ssmtp                \
- && apt-get clean
+ && apt-get clean'
 
 RUN rm -f /etc/apache2/sites-enabled/000-default.conf
 RUN ln -s /opt/osticket/etc/apache.conf /etc/apache2/sites-enabled/osticket.conf

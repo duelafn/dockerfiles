@@ -46,7 +46,8 @@ RUN apt-key adv --keyserver pgp.mit.edu --recv-keys "$ODOO_KEY"
 
 RUN echo "$ODOO_REPO" | tee /etc/apt/sources.list.d/odoo.list
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) -- \
+ apt-get install -y --no-install-recommends \
     antiword         \
     ca-certificates  \
     curl             \
@@ -59,7 +60,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python-renderpm  \
     python-support   \
     sudo             \
- && apt-get clean
+ && apt-get clean'
 
 # This file is missing in 9.0 series
 COPY openerp-gevent /usr/bin/openerp-gevent

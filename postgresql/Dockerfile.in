@@ -30,10 +30,11 @@ RUN useradd --system                         \
     --comment "PostgreSQL administrator,,,"  \
     postgres
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) -- \
+ apt-get install -y --no-install-recommends \
     postgresql \
     sudo       \
- && apt-get clean
+ && apt-get clean'
 
 RUN install -d -m 2775 -o postgres -g postgres /var/run/postgresql
 

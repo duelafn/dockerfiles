@@ -11,7 +11,8 @@ INCLUDE ../_includes/10_setup.docker
 RUN  echo 'deb http://serenevy.net/debian jessie main' > /etc/apt/sources.list.d/serenevy.list
 COPY dean-serenevy.gpg /etc/apt/trusted.gpg.d/dean-serenevy.gpg
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) -- \
+ apt-get install -y --no-install-recommends \
     libcatalyst-authentication-store-dbix-class-perl \
     libcatalyst-dispatchtype-regex-perl              \
     libcatalyst-perl                                 \
@@ -46,7 +47,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     liburi-perl                                      \
     libyaml-perl                                     \
     libyaml-syck-perl                                \
- && apt-get clean
+ && apt-get clean'
 
 # For Database::Connect
 RUN ln -s /www/etc/databases /etc/databases
