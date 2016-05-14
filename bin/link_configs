@@ -22,7 +22,7 @@ use strict; use warnings; use 5.014;
 
 use Getopt::Long qw/:config bundling/;
 use Hash::Util qw/ lock_keys /;
-our $VERSION = '1.1.0';# Created: 2016-01-21
+our $VERSION = '1.2.0';# Created: 2016-01-21
 
 our %OPT = (
     locals => [qw/ localenv postinstall /],
@@ -62,6 +62,9 @@ OPTIONS
 SOURCE DIRECTORY LAYOUT
 
    docker-conf
+   ├── my-own.image
+   │   ├── Makefile
+   │   └── ...
    ├── puppet
    │   ├── localenv.docker
    │   ├── localenv.docker.tsalmoth
@@ -83,6 +86,7 @@ __USAGE__
 use Cwd;
 use FindBin;
 use File::Find;
+use File::Glob qw/ :bsd_glob /;
 use File::Spec::Functions qw/ abs2rel rel2abs splitpath catdir catfile /;
 use Sys::Hostname;
 
@@ -108,6 +112,24 @@ sub MAIN {
 
     link_locals($source, $target, $OPT{locals});
     link_update($source, $target);
+    link_images($source, $target);
+}
+
+sub link_images {
+    my ($source, $target) = @_;
+    my $hostname = hostname;
+
+    my %link;
+    for my $path (glob("$source/*.image.$hostname"), glob("$source/*.image")) {
+        my (undef, undef, $name) = splitpath($path);
+        $name =~ s/\.image(?:\.\Q$hostname\E)?$//;
+        $link{$name} //= $path;
+    }
+
+    for my $name (keys %link) {
+        my $dest = catfile($target, $name);
+        SYMLINK abs2rel($link{$name}, $target), $dest unless -e $dest;
+    }
 }
 
 sub link_update {
