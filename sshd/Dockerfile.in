@@ -30,6 +30,8 @@ RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) --
      ssh    \
  && apt-get clean'
 
+RUN zcat /usr/share/doc/rsync/scripts/rrsync.gz >/usr/local/bin/rrsync && chmod 755 /usr/local/bin/rrsync && cp -a /usr/local/bin/rrsync /usr/bin/rrsync
+
 RUN  mkdir -p /var/run/sshd
 COPY docker /docker
 
