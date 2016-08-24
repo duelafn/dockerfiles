@@ -1,0 +1,19 @@
+#!/usr/bin/perl
+use strict; use warnings; use 5.014;
+use lib "/docker/lib";
+use DockerSamba;
+use File::Path qw/ make_path /;
+
+my $smb = DockerSamba->new;
+
+make_path $smb->vpath("etc");
+make_path $smb->vpath("log");
+
+$smb->build_smb_conf;
+$smb->refresh_system_users;
+$smb->init_user_dirs;
+
+exec "/usr/bin/supervisord", -c => "/etc/supervisor/supervisord.conf";
+
+# sudo mount /usr/local/windows/branches/cmm-installer.branch /mnt/A -o loop,offset=1048576,noatime
+# sudo mount /usr/local/windows/branches/cmm-installer_EFI.branch /mnt/B -o loop,offset=268435456,noatime

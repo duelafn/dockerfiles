@@ -1,0 +1,51 @@
+
+FROM debian:jessie
+MAINTAINER Dean Serenevy <dean@serenevy.net>
+
+
+# CONFIGURATION
+#--------------
+VOLUME ["/opt/samba"]
+
+
+# BUILDING
+#---------
+INCLUDE ../_includes/00_prepare.docker
+
+ENV GID_SAMBASHARE 500
+
+INCLUDE ../_includes/05_localenv.docker
+INCLUDE? localenv.docker
+INCLUDE ../_includes/10_setup.docker
+
+
+# MAIN
+#-----
+RUN addgroup --gid $GID_SAMBASHARE sambashare
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libio-prompt-perl \
+    samba \
+    smbclient \
+    supervisor \
+ && apt-get clean
+
+COPY docker /docker
+
+RUN mv -f /docker/supervisord.conf  /etc/supervisor/supervisord.conf \
+ && perl -pi -E 's[ log \s+ file \s* = \s* \K .* ][/opt/samba/log/log.%m]x' /etc/samba/smb.conf \
+ && perl -pi -E 's[ passdb \s+ backend \s* = \s* \K .* ][tdbsam:/opt/samba/etc/passdb.tdb]x' /etc/samba/smb.conf \
+ && mv -f /etc/samba/smb.conf  /etc/samba/smb.conf.ucf-dist
+
+
+# CLEANUP
+#--------
+INCLUDE ../_includes/99_cleanup.docker
+
+
+# RUNNING
+#--------
+# -p 138:138/udp -p 139:139 -p 445:445
+EXPOSE 138 139 445
+
+CMD exec /docker/run
