@@ -50,7 +50,7 @@ sub MAIN {
         $$img{keep} = 1 if parse_date($$img{Created}) gt $horizon;
         for my $name (@{$$img{names}}) {
             die "Duplicate $name!" if $repo{$name};
-            my ($repo, $tag) = split /:/, $name;
+            my ($repo, $tag) = split / +/, $name;
             if ($tag eq 'latest') {
                 $$img{in_use} = 1;
             } else {
@@ -118,9 +118,10 @@ sub images {
     my (%names, %ids);
     for (@rows) {
         my ($repo, $tag, $id) = split;
-        die "unexpected ':' in $repo" if $repo =~ /:/;
+        die "unexpected ' ' in $repo" if $repo =~ / /;
+        die "unexpected ' ' in $tag"  if $tag  =~ / /;
         $ids{$id}++;
-        push @{$names{$id}}, "$repo:$tag";
+        push @{$names{$id}}, "$repo $tag";
     }
     my $inspected = inspect(keys %ids);
     for my $info (@$inspected) {
