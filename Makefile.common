@@ -22,6 +22,12 @@ release: build revision
 commit: bump_revision
 	$(MAKE) release
 
+push: check-remote revision update
+	docker tag -f ${CONTAINER} ${REMOTE}/${REPOSITORY}:r$$(cat revision).$$(cat update)
+	docker tag -f ${CONTAINER} ${REMOTE}/${REPOSITORY}:latest
+	docker push ${REMOTE}/${REPOSITORY}:r$$(cat revision).$$(cat update)
+	docker push ${REMOTE}/${REPOSITORY}:latest
+
 upgrade: check-name
 	docker exec -it ${NAME} sh -c 'apt-get update && apt-get -u dist-upgrade --assume-no' | grep -q 'Do you want to continue'
 	$(MAKE) force-upgrade
@@ -36,6 +42,11 @@ force-upgrade: Dockerfile revision
 check-name:
 ifndef NAME
 	$(error NAME is undefined)
+endif
+
+check-remote:
+ifndef REMOTE
+	$(error REMOTE is undefined)
 endif
 
 ${LOCALENV}:
