@@ -217,7 +217,7 @@ sub pull_image {
     my ($opt, $image, $tag) = @_;
     return unless $tag;
     run_ok(docker => pull => $image); say "";
-    run_ok(docker => tag => -f => $image => $tag) and say "" if $tag and $tag =~ /\D/;
+    run_ok(docker => tag => -f => $image => $tag) and say "" if $tag and $tag =~ /\D/ and $image ne $tag;
 }
 
 sub guess_config {
