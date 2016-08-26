@@ -11,6 +11,9 @@ else
     AUDIT_OPTION=""
 fi
 
+perl -pi -E 's/^syncthing:x:\K\d+:\d+:/$ENV{UID_SYNCTHING}:$ENV{GID_SYNCTHING}:/' /etc/passwd
+perl -pi -E 's/^syncthing:x:\K\d+:/$ENV{GID_SYNCTHING}:/' /etc/group
+
 # Create /etc
 # -----------
 [ -d "$VOLUME/etc" ] || /docker/init
@@ -29,7 +32,7 @@ fi
 # Go!
 # ---
 HOME="$VOLUME"
-exec /usr/bin/perl -MPOSIX -e 'POSIX::setuid($ENV{UID_SYNCTHING}); exec @ARGV' -- \
+exec /usr/bin/perl -MPOSIX -e 'POSIX::setgid($ENV{GID_SYNCTHING}); POSIX::setuid($ENV{UID_SYNCTHING}); exec @ARGV' -- \
      syncthing \
      -home="$VOLUME/etc" \
      -logfile="$VOLUME/log/syncthing.log" \
