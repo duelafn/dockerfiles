@@ -1,0 +1,45 @@
+
+FROM debian:stretch
+MAINTAINER Dean Serenevy <dean@serenevy.net>
+
+
+# CONFIGURATION
+#--------------
+VOLUME ["/usr/share/games/pioneers"]
+
+
+# BUILDING
+#---------
+INCLUDE ../_includes/00_prepare.docker
+
+ENV UID_PIONEERS 65534
+ENV GID_PIONEERS 65534
+ENV PIONEERS_PORTS 7000-8000
+
+INCLUDE ../_includes/05_localenv.docker
+
+INCLUDE? localenv.docker
+
+INCLUDE ../_includes/10_setup.docker
+
+# MAIN
+#-----
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pioneers-metaserver \
+    pioneers-console \
+ && apt-get clean
+
+COPY docker /docker
+
+
+# CLEANUP
+#--------
+INCLUDE ../_includes/99_cleanup.docker
+
+
+# RUNNING
+#--------
+EXPOSE 5557
+EXPOSE 7000-8000
+
+CMD exec /docker/run

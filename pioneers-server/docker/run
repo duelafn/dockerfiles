@@ -1,0 +1,31 @@
+#!/bin/bash
+VERSION='0.1.0';# Created: 2016-09-03
+set -o nounset     # Die if any variable is unset
+set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+
+ARGS=( )
+
+export PIONEERS_SERVER_CONSOLE=/usr/games/pioneers-server-console
+
+if (test -n "$PIONEERS_PORTS"); then
+    ARGS+=(-p "$PIONEERS_PORTS")
+fi
+
+if (test "$UID_PIONEERS" -ne 65534 -a "$GID_PIONEERS" -ne 65534); then
+    addgroup --gid "$GID_PIONEERS" pioneers
+    adduser                 \
+    --home /opt/pioneers    \
+    --shell /bin/false      \
+    --no-create-home        \
+    --uid "$UID_PIONEERS"   \
+    --gid "$GID_PIONEERS"   \
+    --disabled-password     \
+    --disabled-login        \
+    pioneers
+else
+    UID_PIONEERS=65534
+    GID_PIONEERS=65534
+fi
+
+exec /usr/bin/perl -MPOSIX -e 'POSIX::setgid($ENV{GID_PIONEERS}); POSIX::setuid($ENV{UID_PIONEERS}); exec @ARGV' -- \
+     /usr/games/pioneers-metaserver "${ARGS[@]}" "$@"
