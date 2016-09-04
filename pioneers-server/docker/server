@@ -1,7 +1,13 @@
 #!/bin/bash
 VERSION='0.1.0';# Created: 2016-09-03
-set -o nounset     # Die if any variable is unset
 set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+HOME=/home/pioneers
+
+ARGS=( )
+
+if (test -n "$PIONEERS_SERVER_NAME"); then
+    ARGS+=( -n "$PIONEERS_SERVER_NAME" )
+fi
 
 exec /usr/bin/perl -MPOSIX -e 'POSIX::setgid($ENV{GID_PIONEERS}); POSIX::setuid($ENV{UID_PIONEERS}); exec @ARGV' -- \
-     /usr/games/pioneers-server-console -r -m localhost "$@"
+     /usr/games/pioneers-server-console -r -m localhost "${ARGS[@]}" "$@"

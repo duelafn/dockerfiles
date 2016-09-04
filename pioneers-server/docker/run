@@ -1,7 +1,6 @@
 #!/bin/bash
 VERSION='0.1.0';# Created: 2016-09-03
-set -o nounset     # Die if any variable is unset
-set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+set -o errexit
 
 ARGS=( )
 
@@ -14,14 +13,13 @@ fi
 if (test "$UID_PIONEERS" -ne 65534 -a "$GID_PIONEERS" -ne 65534); then
     addgroup --gid "$GID_PIONEERS" pioneers
     adduser                 \
-    --home /opt/pioneers    \
     --shell /bin/false      \
-    --no-create-home        \
     --uid "$UID_PIONEERS"   \
     --gid "$GID_PIONEERS"   \
     --disabled-password     \
     --disabled-login        \
     pioneers
+    HOME=/home/pioneers
 else
     UID_PIONEERS=65534
     GID_PIONEERS=65534
