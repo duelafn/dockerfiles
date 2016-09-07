@@ -226,6 +226,8 @@ sub refresh_system_users {
                 $map{$1} = $#sys;
             }
         }
+
+        _fprint($file, @sys);
     }
 }
 

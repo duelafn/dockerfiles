@@ -8,6 +8,7 @@ my $smb = DockerSamba->new;
 
 make_path $smb->vpath("etc");
 make_path $smb->vpath("log");
+make_path "/run/supervisord";
 
 $smb->build_smb_conf;
 $smb->refresh_system_users;
