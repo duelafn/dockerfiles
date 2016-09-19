@@ -1,6 +1,6 @@
 
 
-RUN [ -z "$TIME_ZONE" ]  ||  echo "$TIME_ZONE" > /etc/timezone  ||  dpkg-reconfigure -f noninteractive tzdata
+RUN [ -z "$TIME_ZONE" ]  ||  (echo "$TIME_ZONE" > /etc/timezone  &&  dpkg-reconfigure -f noninteractive tzdata)
 
 ## Temporarily disable dpkg fsync to make building faster.
 RUN [ -z "$APT_SPEEDUP" ]  ||  echo force-unsafe-io > "$APT_SPEEDUP"

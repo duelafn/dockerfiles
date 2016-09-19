@@ -2,7 +2,7 @@
 RUN apt-get clean
 
 RUN rm -rf /tmp/* /var/tmp/*
-RUN rm -rf /var/lib/apt/lists/*
+RUN rm -rf /var/lib/apt/lists/* /var/cache/apt
 
 RUN [ -z "$APT_PROXY_FILE" ]  ||  rm -f "$APT_PROXY_FILE"
 RUN [ -z "$APT_SPEEDUP"    ]  ||  rm -f "$APT_SPEEDUP"
