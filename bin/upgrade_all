@@ -78,6 +78,12 @@ entries.
      restart: 1
 
 
+   # List of directories to build unconditionally
+
+   build:
+     - samba
+
+
    # LIST of systemd services which may need restarting. Each service is a hash
    # of docker instances (--name) and the corresponding directory containing
    # its image. Each image will be rebuilt only once and services will be
@@ -170,6 +176,10 @@ sub MAIN {
     my %path;     # directory => $docker-image-name to test
     my %image;    # image_name => bool (was restartd)
 
+    for my $build (@{$$conf{"build"} || []}) {
+        $path{$build} = [ ];# Build, but no services depend on it
+    }
+
     for my $entry (@{$$conf{"services"} || []}) {
         if ('HASH' eq ref($entry)) {
             for my $name (keys %$entry) {# docker-puppet3
@@ -241,7 +251,7 @@ sub build_upgrade {
     my ($dir, $name) = @_;
     my $cb = sub {
         chdir "$OPT{build_path}/$dir";
-        if (!$OPT{force} and grep( "/$name" eq ($$_{Name}//""), docker_ps() )) {
+        if ($name and !$OPT{force} and grep( "/$name" eq ($$_{Name}//""), docker_ps() )) {
             # Requested container is running
             return run(make => upgrade => "NAME=$name");
         } else {
