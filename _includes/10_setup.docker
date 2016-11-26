@@ -23,4 +23,4 @@ RUN dpkg-divert --local --rename --add /usr/bin/ischroot
 RUN ln -sf /bin/true /usr/bin/ischroot
 
 # So many things require a correct locale, we might as well install it
-RUN echo locales >> /tmp/apt.install; echo less >> /tmp/apt.install
+RUN echo locales >> /tmp/apt.install; echo less >> /tmp/apt.install; echo apt-transport-https >> /tmp/apt.install
