@@ -1,6 +1,4 @@
 
-RUN apt-get clean
-
 RUN rm -rf /tmp/* /var/tmp/*
 RUN rm -rf /var/lib/apt/lists/* /var/cache/apt
 
