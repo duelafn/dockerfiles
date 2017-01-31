@@ -46,3 +46,14 @@ certificates:
     root@puppet:/# puppet cert list
     root@puppet:/# puppet cert --sign iron.machinemotion.com
     root@puppet:/# exit
+
+
+Completely fresh start (server and/or client):
+
+    root@server:/# rm -rf /opt/puppet/lib/ssl
+    root@client:/# rm -rf /var/lib/puppet/ssl
+
+Remove certs for a specific client:
+
+    root@server:/# puppet cert clean MY-CLIENT-NAME
+    root@server:/# puppet cert list --all
