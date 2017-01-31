@@ -44,7 +44,7 @@ OPTIONS
 
  --config <file>       explicitly specify the config file
 
- --force               do not try to determine if upgrade is needed
+ --force, -f           do not try to determine if upgrade is needed
                            (saves time when upgrade is known to be needed)
 
  --build-path <path>   path where docker repository is found
