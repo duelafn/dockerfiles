@@ -35,7 +35,7 @@ HOME="$VOLUME"
 exec /usr/bin/perl -MPOSIX -e 'POSIX::setgid($ENV{GID_SYNCTHING}); POSIX::setuid($ENV{UID_SYNCTHING}); exec @ARGV' -- \
      syncthing \
      -home="$VOLUME/etc" \
-     -logfile="$VOLUME/log/syncthing.log" \
      -no-browser \
      -no-restart \
-     $AUDIT_OPTION
+     $AUDIT_OPTION \
+     >>"$VOLUME/log/syncthing.log" 2>&1
