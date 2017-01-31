@@ -1,0 +1,216 @@
+#!/usr/bin/perl -w
+# Copyright (C) 2017  Dean Serenevy
+#
+# This program is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the Free
+# Software Foundation, version 3 of the License.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program. If not, see <http://www.gnu.org/licenses/>.
+use strict; use warnings; use 5.014;
+
+use Getopt::Long qw/:config posix_default bundling pass_through/;
+use Hash::Util qw/ lock_keys /;
+our $VERSION = '0.1.0';# Created: 2017-01-01
+
+our %OPT = (
+    volume_base  => "/home/user",
+    docker_image => "duelafn/mkvtoolnix:latest",
+);
+our @OPT_SPEC =
+qw/ help|h version noact|no-act|dry-run DEBUG
+    docker_image|image=s
+  /;
+sub USAGE { <<"__USAGE__" };
+usage: $_[0] [options] ACTION ARG(S)
+
+ACTIONS
+
+  $_[0] mkvmerge ...
+  $_[0] ffmpeg ...
+  $_[0] mmg ...
+  $_[0] mkvtoolnix-gui ...
+
+Execute the corresponding command in a docker instance. Will attempt to
+determine appropriate volumes to mount in order to make files accessible within
+image.
+
+OPTIONS
+
+ --image IMAGE       docker image to run ($OPT{docker_image})
+
+ --DEBUG             print additional information while running
+ --help, -h          this usage message
+ --version           show script version
+__USAGE__
+
+use Time::Piece;
+use Path::Class;
+
+our %ACTIONS; sub action;
+action help => sub { usage() };
+
+action [qw/ mmg mkvtoolnix-gui /], sub {
+    my ($action, @in) = @_;
+    my %volumes = get_volumes(@in);
+    my @args = replace_volumes([ grep { !-d $_ } @in ], %volumes);
+    docker(
+        $OPT{docker_image},
+        [ "/usr/bin/mkvtoolnix-gui", @args ],
+        x11 => 1,
+        volumes => \%volumes,
+        workdir => "$OPT{volume_base}/workdir",
+    );
+};
+
+action ffmpeg => sub {
+    my ($action, @in) = @_;
+    my %volumes = get_volumes(@in);
+    my @args = replace_volumes([ grep { !-d $_ } @in ], %volumes);
+    docker(
+        $OPT{docker_image},
+        [ "/usr/bin/ffmpeg", @args ],
+        volumes => \%volumes,
+        workdir => "$OPT{volume_base}/workdir",
+    );
+};
+
+action mkvmerge => sub {
+    my ($action, @in) = @_;
+    my %volumes = get_volumes(@in);
+    my @args = replace_volumes([ grep { !-d $_ } @in ], %volumes);
+    docker(
+        $OPT{docker_image},
+        [ "/usr/bin/mkvmerge", @args ],
+        volumes => \%volumes,
+        workdir => "$OPT{volume_base}/workdir",
+    );
+};
+
+get_options( \%OPT, @OPT_SPEC );
+call_action( @ARGV );
+
+
+sub docker {
+    my ($image, $cmd, %opt) = @_;
+    my @docker = qw/ docker run -it --rm /;
+
+    push @docker, -e => "DISPLAY=$ENV{DISPLAY}", -v => "/tmp/.X11-unix:/tmp/.X11-unix" if $opt{x11};
+    push @docker, -w => $opt{workdir} if defined($opt{workdir});
+
+    if (my $v = $opt{volumes}) {
+        push @docker, -v => "$_:$$v{$_}" for keys %$v;
+    }
+
+    say "@docker $image @$cmd";
+    system @docker, $image, @$cmd;
+}
+
+sub replace_volumes {
+    my ($args, %vol) = @_;
+    my @new;
+    for (@$args) {
+        if (/\//) {
+            my ($test, @rest);
+            if (-d $_) {
+                $test = dir($_);
+            } else {
+                $test = file($_)->parent;
+                @rest = (file($_)->basename);
+            }
+
+            if ($test) {
+                my $res = $test->absolute->resolve;
+                if (defined($vol{$res})) {
+                    push @new, "".dir($vol{$res}, @rest);
+                    next;
+                }
+            }
+        }
+
+        push @new, $_;# Fallback when we don't `next`
+    }
+    return @new;
+}
+
+sub get_volumes {
+    state $cwd = dir(".")->absolute->resolve;
+    my $all;
+    my %dirs = ( $cwd => dir($OPT{volume_base}, "workdir") );
+    my %names;
+
+    # Parse out existing directories
+    for (@_) {
+        my $test;
+        if ($_ eq '--') {
+            $all = 1
+        } elsif (/^\-/ and not $all) {
+            next;
+        } elsif (-d $_) {
+            $test = dir($_);
+        } else {
+            $test = file($_)->parent;
+        }
+
+        if (-e "$test") {
+            my $realpath = $test->absolute->resolve;
+            unless (defined($dirs{$realpath})) {
+                my $name = $test->basename;
+                die "Bad name: '$name' ('$test' == '$realpath')" if $name eq '.' or $name eq '..';
+
+                if ($names{$name}) {
+                    my $i = 1;
+                    $i++ while $names{"$name-$i"};
+                    $name = "$name-$i";
+                }
+                $names{$name} = 1;
+                $dirs{$realpath} = dir($OPT{volume_base}, $name);
+            }
+        }
+    }
+
+    return %dirs;
+}
+
+
+sub action {
+    my $name = shift;
+    $name = [ $name ] unless ref($name);
+    unshift @_, "-action" if 1 == @_;
+    my %a = @_;
+    $a{-name} //= $$name[0];
+
+    $ACTIONS{$_} = \%a for @$name;
+}
+
+sub call_action {
+    my $name = shift // "";
+    usage("No such action $name") unless exists $ACTIONS{$name};
+    my $action = $ACTIONS{$name};
+
+    my @arg = @_;
+    @arg = $$action{-build_args}->( $action, @_ ) if $$action{-build_args};
+
+    $$action{-action}->( $action, @arg );
+}
+
+sub get_options {
+    my $OPT = shift;
+    GetOptions $OPT, @_ or usage(1);
+    usage() if $$OPT{help} || $$OPT{version};
+    lock_keys(%$OPT, keys %$OPT, map /^(\w+)/, @_);
+}
+
+sub usage {
+    my $status = (@_ && $_[0] =~ /^\d+$/) ? shift(@_) : 0+@_;
+    print @_, "\n" if @_;
+    require File::Spec; my $exe = (File::Spec->splitpath($0))[2];
+    $OPT{$_} = $OPT{$_} ? "enabled" : "disabled" for map /^(\w+).*!/, @OPT_SPEC;
+    print $OPT{version} ? "$exe version $VERSION\n" : USAGE($exe);
+    exit $status;
+}

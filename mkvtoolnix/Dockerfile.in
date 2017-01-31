@@ -1,0 +1,54 @@
+
+FROM debian:stretch
+MAINTAINER Dean Serenevy <dean@serenevy.net>
+
+
+# CONFIGURATION
+#--------------
+VOLUME ["/opt/mkvtoolnix"]
+
+
+# BUILDING
+#---------
+INCLUDE ../_includes/00_prepare.docker
+
+ENV UID_USER 1000
+ENV GID_USER 1000
+
+INCLUDE ../_includes/05_localenv.docker
+
+INCLUDE? localenv.docker
+
+INCLUDE ../_includes/10_setup.docker
+
+# MAIN
+#-----
+RUN addgroup --gid $GID_USER user
+RUN adduser              \
+    --home /home/user    \
+    --shell /bin/bash    \
+    --uid $UID_USER      \
+    --gid $GID_USER      \
+    --disabled-password  \
+    --disabled-login     \
+    user
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    mkvtoolnix \
+    mkvtoolnix-gui \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/* /var/cache/apt /usr/share/doc/* /usr/share/man/man*/*
+
+
+# CLEANUP
+#--------
+INCLUDE ../_includes/99_cleanup.docker
+
+
+# RUNNING
+#--------
+# EXPOSE 3306
+USER user
+
+CMD exec /bin/bash
