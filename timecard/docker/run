@@ -1,0 +1,46 @@
+#!/bin/bash
+VERSION='0.1.0';# Created: 2016-02-13
+set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+
+VOLUME=/opt/timeclock
+
+ETC_DIR=$VOLUME/etc
+
+# ssmtp needs updated host name:
+hname=`hostname`
+[ -z "$hname"   ] || sed -i "/^#\\?hostname/chostname=$hname" /etc/ssmtp/ssmtp.conf
+[ -z "$MAILHUB" ] || sed -i "/^#\\?mailhub/cmailhub=$MAILHUB" /etc/ssmtp/ssmtp.conf
+
+set -o nounset     # Die if any variable is unset
+
+# create directories
+[ -d "$ETC_DIR" ] || install -d -o root -g root "$ETC_DIR"
+[ -d "$APACHE_LOG_DIR" ]  || install -d -o root -g root "$APACHE_LOG_DIR"
+[ -d "$APACHE_RUN_DIR"  ] || install -d -o root -g root "$APACHE_RUN_DIR"
+[ -d "$APACHE_LOCK_DIR" ] || install -d -o root -g root "$APACHE_LOCK_DIR"
+
+[ -f "$ETC_DIR/site.conf" ] || cat <<EOF > "$ETC_DIR/site.conf"
+<VirtualHost *:80>
+    ServerName  $hname
+    ServerAlias www.$hname
+    DocumentRoot $VOLUME/www
+
+    CustomLog $APACHE_LOG_DIR/access.log combined
+    ErrorLog  $APACHE_LOG_DIR/error.log
+
+    <Directory "$VOLUME/www">
+        Options Indexes FollowSymLinks
+        AllowOverride None
+        Require all granted
+    </Directory>
+
+    <FilesMatch "^config">
+        Require all denied
+    </FilesMatch>
+
+    RedirectMatch 404 /\.git
+    RedirectMatch 404 /\.svn
+</VirtualHost>
+EOF
+
+exec /usr/sbin/apache2 -DFOREGROUND

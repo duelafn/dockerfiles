@@ -2,47 +2,39 @@
 Volume Initialization
 =====================
 
+The timeclock root should be cloned into VOLUME/www/ (VOLUME/www/index.php
+should exist). For example:
+
+   cd VOLUME
+   git clone https://github.com/duelafn/timeclock www
+
+Then run container. A reasonable default apache configuration will be
+created if needed.
+
+
+Volume Layout
+=============
+
 VOLUME: /opt/timeclock
 
-Create a suitable HTTP (no ssl if you are using nginx reverse proxy)
-configureation in etc/apache2/timeclock.conf
-
-Clone a copy of https://github.com/duelafn/timeclock to the www directory
-(/opt/timeclock/www/index.php should exist).
+Container apache configuration is stored in VOLUME/etc/site.conf
 
 
 Linked Containers
 =================
 
-Create a mariadb instance named tineclock-data.
+Create a linked mariadb instance named timeclock-data.
 
 
 Host Configuration
 ==================
 
-Unless the site is directly exposed, create an nginx reverse proxy on the
-host. Example:
+Create an nginx reverse proxy on the host to manage ssl.
 
-    server {
-        listen *:80;
-        server_name timeclock.apcillc.com timeclock.machinemotion.com www.timeclock.machinemotion.com www.timeclock.apcillc.com;
-        return  301 https://$server_name$request_uri;
-    }
 
-    server {
-        listen 162.17.32.4:443;
-        server_name timeclock.apcillc.com timeclock.machinemotion.com www.timeclock.machinemotion.com www.timeclock.apcillc.com;
+Docker Scripts
+==============
 
-        ssl on;
-        ssl_certificate /opt/timeclock/etc/apache2/ssl/timeclock.apcillc.com.chained.crt;
-        ssl_certificate_key /opt/timeclock/etc/apache2/ssl/timeclock.apcillc.com.key;
-        ssl_session_cache shared:SSL:10m;
-
-        location / {
-            proxy_pass http://localhost:3880; # my existing apache instance
-            proxy_set_header Host $host;
-
-            # re-write redirects to http as to https, example: /home
-            proxy_redirect http:// https://;
-        }
-    }
+    docker run  ... /docker/run
+    docker exec ... /docker/reload
+    docker exec ... /docker/stop
