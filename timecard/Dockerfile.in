@@ -32,7 +32,7 @@ RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) --
  apt-get install -y --no-install-recommends \
     apache2               \
     libapache2-mod-php5   \
-    php5-mysql            \
+    php5-mysqlnd          \
     ssmtp                 \
  && apt-get clean'
 
