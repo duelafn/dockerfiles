@@ -14,9 +14,9 @@ build: Dockerfile
 	docker build --rm -t ${CONTAINER} .
 	docker images | perl -ne'print if 1==$$. or m#${CONTAINER}#'
 
-release: build revision
+release: build revision update
 	docker tag -f ${CONTAINER} ${REPOSITORY}:latest
-	docker tag -f ${CONTAINER} ${REPOSITORY}:r$$(cat revision)
+	docker tag -f ${CONTAINER} ${REPOSITORY}:r$$(cat revision).$$(cat update)
 	docker images | perl -ne'print if 1==$$. or m#${REPOSITORY}#'
 
 commit: bump_revision
