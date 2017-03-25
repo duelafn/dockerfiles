@@ -12,6 +12,7 @@ VOLUME ["/www"]
 #---------
 INCLUDE ../_includes/00_prepare.docker
 INCLUDE ../_includes/05_localenv.docker
+INCLUDE? localenv.docker
 INCLUDE ../_includes/10_setup.docker
 
 # MAIN
