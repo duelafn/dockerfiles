@@ -26,10 +26,19 @@ our $VERSION = '0.2.1';# Created: 2015-12-05
 
 our %OPT = ( keep_major => 2, keep_history => 2, keep_time => "3 months" );
 our @OPT_SPEC =
-qw/ help|h version noact|no-act|dry-run DEBUG
+qw/ help|h version noact|no-act|dry-run DEBUG|verbose|v!
+    force|f!
   /;
 sub USAGE { <<"__USAGE__" };
 usage: $_[0] [options]
+
+OPTIONS
+
+ --force, -f         pass --force option to docker rmi
+
+ --verbose, -v       print additional information while running
+ --help, -h          this usage message
+ --version           show script version
 __USAGE__
 
 use JSON;
@@ -140,7 +149,16 @@ sub inspect {
 sub rmi {
     die "Unexpected IDs: @_" if grep /[^0-9a-fA-F]/, @_;
     return unless @_;
-    system docker => rmi => @_;
+    my @cmd = ( docker => "rmi" );
+    push @cmd, "-f" if $OPT{force};
+    if ($OPT{DEBUG}) {
+        for (@_) {
+            say "removing image $_";
+            system @cmd => $_;
+        }
+    } else {
+        system @cmd => @_;
+    }
 }
 
 sub get_options {
