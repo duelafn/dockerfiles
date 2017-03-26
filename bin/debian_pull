@@ -1,3 +1,0 @@
-#!/bin/sh
-docker pull debian:jessie
-docker tag -f debian:jessie debian:latest
