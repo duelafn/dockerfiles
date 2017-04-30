@@ -22,12 +22,16 @@ use strict; use warnings; use 5.014;
 
 use Getopt::Long qw/:config bundling/;
 use Hash::Util qw/ lock_keys /;
-our $VERSION = '0.2.1';# Created: 2015-12-05
+use FindBin;
+our $VERSION = '1.0.0';# Created: 2015-12-05
 
-our %OPT = ( keep_major => 2, keep_history => 2, keep_time => "3 months" );
+our %OPT = (
+    keep_major => 3, keep_history => 3, keep_time => "3 months",
+    config => "$FindBin::Bin/../upgrade.conf",
+);
 our @OPT_SPEC =
 qw/ help|h version noact|no-act|dry-run DEBUG|verbose|v!
-    force|f!
+    force|f! config|c=s
   /;
 sub USAGE { <<"__USAGE__" };
 usage: $_[0] [options]
@@ -36,13 +40,17 @@ OPTIONS
 
  --force, -f         pass --force option to docker rmi
 
+ --config, -c CONF   read config file ($OPT{config})
+
  --verbose, -v       print additional information while running
  --help, -h          this usage message
  --version           show script version
 __USAGE__
 
-use JSON;
 use Dean::Util qw/ natural_sort parse_date /;
+use JSON;
+use Sort::Key::Natural qw/ rnatsort /;
+use YAML qw/ LoadFile /;
 
 get_options( \%OPT, @OPT_SPEC );
 MAIN(\%OPT, @ARGV);
@@ -54,90 +62,119 @@ sub MAIN {
     my $horizon = parse_date("$OPT{keep_time} ago");
     die "Bad date" unless $horizon and $horizon lt parse_date("yesterday");
 
-    for my $img (@{images()}) {
-        $image{$$img{Id}} = $img;
-        $$img{keep} = 1 if parse_date($$img{Created}) gt $horizon;
-        for my $name (@{$$img{names}}) {
-            die "Duplicate $name!" if $repo{$name};
-            my ($repo, $tag) = split / +/, $name;
-            if ($tag eq 'latest') {
-                $$img{in_use} = 1;
+    my $config  = read_config($opt);
+    my $repo    = images();
+    my $running = containers();
+    my $short_length = @$running ? length($$running[0]) : 0;
+    my %running = map +($_ => 1), @$running;
+    my @remove;
+
+    for my $r (sort keys %$repo) {
+        my @versions = rnatsort keys %{$$repo{$r}};
+        my $keep_major   = $$config{$r}{major}   || $$config{_}{major}   || $OPT{keep_major}   || 1;
+        my $keep_history = $$config{$r}{history} || $$config{_}{history} || $OPT{keep_history} || 1;
+        my $keep_time    = $$config{$r}{time}    || $$config{_}{time}    || $horizon;
+
+        my ($major, @keep, @rm);
+        for my $v (@versions) {
+            my $keep = 0;
+            my $img = $$repo{$r}{$v};
+            my ($M, $m) = split /\./, $v;
+            $M =~ s/^r(\d+)$/$1/; # remove leading "r" if present
+            $m //= 0;             # Allow integer versions ("r2")
+
+            if ($M =~ /\D/ or $m =~ /\D/) {
+                $keep = 1;        # Unversioned tag. Keep it
+            }
+
+            else {
+                $major //= $M;
+                $$img{created_dt} //= parse_date($$img{Created});
+
+                $keep = 1 if $running{substr($$img{Id}, 0, $short_length)}; # Currently running! keep it
+                $keep = 1 if $$img{created_dt} gt $keep_time;               # Too new, keep it
+                $keep = 1 if $keep_history-- > 0;                           # Keep minimum number
+                if ($M != $major) {
+                    $keep = 1 if --$keep_major > 0;                         # Keep minimum number of major versions
+                    $major = $M;
+                }
+            }
+
+            if ($keep) {
+                push @keep, $v unless $v eq "latest";
             } else {
-                # Don't tag the latest since it doesn't sort well
-                $repo{$repo}{$tag} = $img;
+                push @rm, $v;
+                push @remove, "$r:$v";
             }
+        }
+
+        if (@keep or @rm) {
+            say $r;
+            say "  Keep:   @keep" if @keep;
+            say "  Remove: @rm"   if @rm;
         }
     }
 
-    for my $c (@{containers()}) {
-        $image{$$c{Image}}{in_use} = 1;
+    unless (@remove) {
+        say "\nNothing to remove";
+        exit;
     }
 
-    for my $repo (keys %repo) {
-        my $keep_major   = $OPT{keep_major};
-        my $keep_history = $OPT{keep_history};
-        my @tags = reverse natural_sort(keys %{$repo{$repo}});
-        my $major = 0;
-        my (@keep, @rm);
-        for my $tag (@tags) {
-            # First numerical value
-            if ($tag =~ /(\d+)/ and $1 != $major) {
-                $repo{$repo}{$tag}{keep} = 1 if $keep_major-- >= 0;
-                $major = $1;
-            }
-
-            if ($repo{$repo}{$tag}{in_use}) {
-                # must keep if in use even if keep_history is negative/invalid
-                $repo{$repo}{$tag}{keep} = 1;
-                $keep_history = $OPT{keep_history};
-            }
-
-            # use >= 0 since first match occurs on item itself, thus
-            # keep-history = 1 will keep 2 images.
-            if ($keep_history >= 0) {
-                $keep_history--;
-                $repo{$repo}{$tag}{keep} = 1;
-            }
-
-            $repo{$repo}{$tag}{keep} //= 0;
-            $repo{$repo}{$tag}{keep} ? push(@keep, $tag) : push(@rm, $tag);
-        }
-        say $repo;
-        say "  Keep:   @keep" if @keep;
-        say "  Remove: @rm"   if @rm;
+    if ($OPT{noact}) {
+        say "Remove images:";
+        say "  $_" for @remove;
+    } else {
+        rmi(@remove);
+        # Clean up if anything left dangling
+        rmc(exited());
+        rmi(dangling());
     }
+}
 
-    for (values %image) {
-        next if defined($$_{keep});
-        $$_{keep} = 1;
-        say STDERR "Keeping unversioned image: @{$$_{names}}";
+sub dangling {
+    chomp(my @ids = qx| docker images -qaf dangling=true |);
+    return @ids;
+}
+
+sub exited {
+    chomp(my @ids = qx| docker ps -qaf status=exited |);
+    return @ids;
+}
+
+sub read_config {
+    my $opt = shift;
+    my $conf = eval { LoadFile $$opt{config} };
+    $conf = $$conf{prune} || {};
+    for (values %$conf) {
+        $$_{time} = parse_date("$$_{time} ago") if $$_{time};
     }
-
-    rmi( map $$_{Id}, grep !$$_{keep}, values %image );
+    return $conf;
 }
 
 sub containers {
     chomp(my @ids = qx| docker ps -q |);
-    return inspect(@ids);
+    return \@ids;
 }
 
 sub images {
     # skip first line (header)
     my (undef, @rows) = qx| docker images --no-trunc |;
-    my (%names, %ids);
+    my (%repo, %id);
     for (@rows) {
         my ($repo, $tag, $id) = split;
-        die "unexpected ' ' in $repo" if $repo =~ / /;
-        die "unexpected ' ' in $tag"  if $tag  =~ / /;
-        $ids{$id}++;
-        push @{$names{$id}}, "$repo $tag";
+        die "Didn't expect duplicate repo:tag pair ($repo:$tag)!" if $repo{$repo}{$tag};
+        $repo{$repo}{$tag} = $id;
+        $id{$id}++;
     }
-    my $inspected = inspect(keys %ids);
-    for my $info (@$inspected) {
-        die "Confused!" unless $names{$$info{Id}};
-        $$info{names} = $names{$$info{Id}};
+
+    $id{$$_{Id}} = $_ for @{ inspect(keys %id) };
+
+    for my $repo (keys %repo) {
+        for my $tag (keys %{$repo{$repo}}) {
+            $repo{$repo}{$tag} = $id{$repo{$repo}{$tag}};
+        }
     }
-    return $inspected;
+    return \%repo;
 }
 
 sub inspect {
@@ -146,8 +183,21 @@ sub inspect {
     decode_json(qx| docker inspect @_ |);
 }
 
+sub rmc {
+    return unless @_;
+    my @cmd = ( docker => "rm" );
+    push @cmd, "-f" if $OPT{force};
+    if ($OPT{DEBUG}) {
+        for (@_) {
+            say "removing container $_";
+            system @cmd => $_;
+        }
+    } else {
+        system @cmd => @_;
+    }
+}
+
 sub rmi {
-    die "Unexpected IDs: @_" if grep /[^0-9a-fA-F]/, @_;
     return unless @_;
     my @cmd = ( docker => "rmi" );
     push @cmd, "-f" if $OPT{force};
