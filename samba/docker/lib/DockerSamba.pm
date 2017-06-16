@@ -184,7 +184,8 @@ sub build_smb_conf {
 
     # smb.conf
     my $src = $self->vpath("etc", "smb.conf");
-    my $smb_conf = $self->config("smb.conf");
+    my $conffile = $self->config("smb.conf");
+    my $smb_conf;
     if (-d "$src.d") {
         my $config;
         local $/;
@@ -192,19 +193,22 @@ sub build_smb_conf {
         for (sort @conf) {
             $config .= _cat($_) . "\n";
         };
-        _fprint($smb_conf, _testparm($config));
+        $smb_conf = _testparm($config);
     }
 
     elsif (-f $src) {
-        _fprint($smb_conf, _testparm(_cat($src)));
+        $smb_conf = _testparm(_cat($src));
     }
 
     else {
         my $dflt = "$src.d/00_default.conf";
         make_path("$src.d");
-        cp "$smb_conf.ucf-dist", $dflt;
-        _fprint($smb_conf, _testparm(_cat($dflt)));
+        cp "$conffile.ucf-dist", $dflt;
+        $smb_conf = _testparm(_cat($dflt));
     }
+
+    _fprint($conffile, $smb_conf);
+    return $smb_conf;
 }
 
 sub refresh_system_users {

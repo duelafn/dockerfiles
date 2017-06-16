@@ -10,9 +10,15 @@ make_path $smb->vpath("etc");
 make_path $smb->vpath("log");
 make_path "/run/supervisord";
 
-$smb->build_smb_conf;
+my $conf = $smb->build_smb_conf;
 $smb->refresh_system_users;
 $smb->init_user_dirs;
+
+if ($conf =~ m# ^ \s* passdb \s+ backend \s* = \s* tdbsam:(\s+\.tdb) $ #x) {
+    my $tdb = $1;
+    rename "$tdb.$_", "$tdb.@{[ $_ + 1 ]}" for 4, 3, 2, 1;
+    system '/usr/bin/tdbbackup' => -v => -s => ".1" => $tdb;
+}
 
 exec "/usr/bin/supervisord", -c => "/etc/supervisor/supervisord.conf";
 
