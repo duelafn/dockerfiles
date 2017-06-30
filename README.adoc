@@ -1,9 +1,19 @@
 
-Usage
-=====
+Dockerfiles
+===========
 
-Volumes
-=======
+These are just a bunch of `Dockerfile` which I use at work and on my
+machines. I run a `Dcokerfile.in` through a simple perl script so that I
+can include common components (apt proxy, standard packages, common
+cleanup).
+
+The `bin` directory includes some scripts to link include files from
+another folder (for "vendorization") and scripts to automatically manage
+updates and cleanup of old versions. The intent is to periodically (and
+automatically) call `upgrade_all` to ensure security updates are regularly
+applied.
+
+== Volumes
 
 These dockerfiles are set up to use a single volume for both configuration
 and perminant storage. Contrary to recommended practices, I typically mount
@@ -11,8 +21,7 @@ plain directory volumes rather than use storage containers, so that is what
 all the samples use. Feel free to use storage containers if you like.
 
 
-Creating New Machines
-=====================
+== Creating New Machines
 
 Directory Template:
 
