@@ -1,0 +1,76 @@
+
+FROM debian:stretch
+MAINTAINER Dean Serenevy <dean@serenevy.net>
+
+
+# CONFIGURATION
+#--------------
+VOLUME ["/opt/puppet"]
+
+
+# BUILDING
+#---------
+INCLUDE ../_includes/00_prepare.docker
+
+ENV APACHE_RUN_USER     www-data
+ENV APACHE_RUN_GROUP    www-data
+ENV APACHE_LOG_DIR      /var/log/apache2
+ENV APACHE_PID_FILE     /var/run/apache2.pid
+ENV APACHE_RUN_DIR      /var/run/apache2
+ENV APACHE_LOCK_DIR     /var/lock/apache2
+# ENV APACHE_SERVERADMIN  bob@example.com
+# ENV APACHE_SERVERNAME   puppet
+# ENV APACHE_SERVERALIAS  puppet.example.com
+ENV APACHE_DOCUMENTROOT /var/www
+
+ENV UID_PUPPET 200
+ENV GID_PUPPET 200
+
+INCLUDE ../_includes/05_localenv.docker
+
+# Need to set env variables (those which are commented above) in this file:
+INCLUDE localenv.docker
+
+INCLUDE ../_includes/10_setup.docker
+
+# MAIN
+#-----
+RUN addgroup --gid $GID_PUPPET puppet
+RUN adduser --system        \
+    --home /var/lib/puppet  \
+    --shell /bin/false      \
+    --no-create-home        \
+    --uid $UID_PUPPET       \
+    --gid $GID_PUPPET       \
+    --disabled-password     \
+    --disabled-login        \
+    puppet
+
+RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) -- \
+ apt-get install -y --no-install-recommends \
+    puppet-master-passenger          \
+    puppet-module-puppetlabs-concat  \
+    puppet-module-puppetlabs-inifile \
+    puppet-module-puppetlabs-stdlib  \
+    puppet-module-puppetlabs-vcsrepo \
+    ruby-rgen                        \
+ && apt-get clean'
+
+# Puppet doesn't really allow changing the config file, it MUST be at
+# /etc/puppet/puppet.conf (puppet cert list doesn't recognize --config or
+# --confdir options).
+RUN mv -f /etc/puppet/puppet.conf /etc/puppet/puppet.conf.dpkg-dist  && ln -s /opt/puppet/etc/puppet.conf           /etc/puppet/puppet.conf
+RUN rm -f /etc/apache2/sites-enabled/puppet-master.conf              && ln -s /opt/puppet/etc/apache-passenger.conf /etc/apache2/sites-enabled/apache-passenger.conf
+
+COPY docker /docker
+
+# CLEANUP
+#--------
+INCLUDE ../_includes/99_cleanup.docker
+
+
+# RUNNING
+#--------
+EXPOSE 8140
+
+CMD exec /docker/run
