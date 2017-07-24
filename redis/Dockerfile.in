@@ -1,15 +1,10 @@
 
-## This is a release builder, launch it, then once it is finished
-## export/import the result to get a fixed object.
-
-FROM debian:jessie
+FROM debian:stretch
 MAINTAINER Dean Serenevy <dean@serenevy.net>
-
 
 # CONFIGURATION
 #--------------
 VOLUME ["/opt/redis"]
-
 
 # BUILDING
 #---------
@@ -20,7 +15,6 @@ ENV GID_REDIS 204
 
 INCLUDE ../_includes/05_localenv.docker
 INCLUDE ../_includes/10_setup.docker
-
 
 # MAIN
 #-----
@@ -42,7 +36,6 @@ RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) --
      sudo           \
  && apt-get clean'
 
-
 RUN sed -i '/^daemonize\s/cdaemonize no'                           /etc/redis/redis.conf
 RUN sed -i '/^bind\s/d'                                            /etc/redis/redis.conf
 RUN sed -i '/^dir\s/cdir /opt/redis/data'                          /etc/redis/redis.conf
@@ -50,11 +43,9 @@ RUN sed -i '/^logfile\s/clogfile /opt/redis/log/redis-server.log'  /etc/redis/re
 
 COPY docker /docker
 
-
 # CLEANUP
 #--------
 INCLUDE ../_includes/99_cleanup.docker
-
 
 # RUNNING
 #--------

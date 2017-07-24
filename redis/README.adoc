@@ -1,0 +1,31 @@
+
+== Volume Initialization
+
+Just run container.
+
+Creates reasonable config and relevant directories on first run. If you
+link to a volume, data values will be stored between executions, otherwise,
+data values will be lost when container is rebooted.
+
+One may optionally create/modify the config file in VOLUME/etc/redis.conf
+
+
+== Container Execution
+
+    docker run --rm -h example.com -p 127.0.0.1:6379:6379 -v /src/redis:/opt/redis --name redis cmminc/redis:latest
+
+
+== Volume Layout
+
+VOLUME: /opt/redis
+
+    /opt/redis/data: persistent storage directory
+    /opt/redis/etc:  configuration data
+    /opt/redis/log:  log data
+
+
+== Docker Scripts
+
+    docker run  ... /docker/run
+    docker run  ... /docker/upgrade    # upgrade from older container
+    docker exec ... /docker/stop

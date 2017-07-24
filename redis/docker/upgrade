@@ -1,0 +1,67 @@
+#!/bin/bash
+VERSION='1';# Created: 2015-04-22
+set -o nounset     # Die if any variable is unset
+set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+
+cd /opt/redis
+
+ETC_DIR=/opt/redis/etc
+LOG_DIR=/opt/redis/log
+DATA_DIR=/opt/redis/data
+
+[ -f "$ETC_DIR/.upgrade_version" ] || echo "0" > "$ETC_DIR/.upgrade_version"
+CURRENT_VERSION=$(cat "$ETC_DIR/.upgrade_version")
+
+conffile() {
+    sys="$1"
+    user="$2"
+    bname="$(basename "$1")"
+    if [ -f "$user" ]; then
+        if ! (diff -q "$user" "$sys" >/dev/null); then
+            while true; do
+                cat <<EOF
+Configuration file '$user'
+ ==> Modified (by you or by a script) since installation.
+ ==> Package distributor has shipped an updated version.
+   What would you like to do about it ?  Your options are:
+    Y or I  : install the package maintainer's version
+    N or O  : keep your currently-installed version
+      D     : show the differences between the versions
+      Z     : start a shell to examine the situation
+ The default action is to keep your current version.
+EOF
+                echo -n "*** $bname (Y/I/N/O/D/Z) [default=N] ? "
+                read rv
+                case $rv in
+                    [YyIi]*)    mv -f "$user" "$user.dpkg-old"; cp "$sys" "$user"; break;;
+                    [NnOo]*|"") cp -f "$sys"  "$user.dpkg-dist"; break;;
+                    [Dd]*)      set +e; diff -u "$sys" "$user" | less --quit-if-one-screen; set -e;;
+                    [Zz]*)      cp -f "$sys"  "$user.dpkg-new"; set +e; bash; set -e;;
+                    *)          echo "Try again.";;
+                esac
+            done
+        fi
+    fi
+}
+
+conffile /etc/redis/redis.conf "$ETC_DIR/redis.conf"
+
+if [ -f "$ETC_DIR/redis.conf" -a "$CURRENT_VERSION" -lt "1" ]; then
+    echo ""
+    echo -n "Enable protected-mode (Y/N) [default=N] ? "
+    read rv
+    if (grep -q ^protected-mode "$ETC_DIR/redis.conf"); then
+        case $rv in
+            [Yy]*)    sed -i '/^protected-mode\s/cprotected-mode yes' "$ETC_DIR/redis.conf";;
+            [Nn]*|"") sed -i '/^protected-mode\s/cprotected-mode no'  "$ETC_DIR/redis.conf";;
+        esac
+    else
+        case $rv in
+            [Yy]*)    echo 'protected-mode yes' >> "$ETC_DIR/redis.conf";;
+            [Nn]*|"") echo 'protected-mode no'  >> "$ETC_DIR/redis.conf";;
+        esac
+    fi
+fi
+
+
+echo "$VERSION" > "$ETC_DIR/.upgrade_version"
