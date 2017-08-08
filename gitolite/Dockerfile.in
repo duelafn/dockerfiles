@@ -1,8 +1,5 @@
 
-## This is a release builder, launch it, then once it is finished
-## export/import the result to get a fixed object.
-
-FROM debian:jessie
+FROM debian:stretch
 MAINTAINER Dean Serenevy <dean@serenevy.net>
 
 
