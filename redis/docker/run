@@ -11,5 +11,7 @@ install -d -o redis -g redis "$ETC_DIR" "$LOG_DIR" "$DATA_DIR"
 
 # Ensure we have reasonable config
 [ -f "$ETC_DIR/redis.conf" ] || install -o redis -g redis /etc/redis/redis.conf "$ETC_DIR/redis.conf"
+[ sudo -u redis cat "$ETC_DIR/redis.conf" >/dev/null 2>&1 ] || chgrp redis "$ETC_DIR/redis.conf"
+[ sudo -u redis cat "$ETC_DIR/redis.conf" >/dev/null 2>&1 ] || chmod 0644  "$ETC_DIR/redis.conf"
 
 exec sudo -u redis /usr/bin/redis-server "$ETC_DIR/redis.conf"
