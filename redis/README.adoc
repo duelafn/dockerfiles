@@ -27,5 +27,5 @@ VOLUME: /opt/redis
 == Docker Scripts
 
     docker run  ... /docker/run
-    docker run  ... /docker/upgrade    # upgrade from older container
+    docker run  -it ... /docker/upgrade    # upgrade from older container
     docker exec ... /docker/stop
