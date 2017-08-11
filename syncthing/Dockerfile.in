@@ -1,5 +1,5 @@
 
-FROM debian:jessie
+FROM debian:stretch
 MAINTAINER Dean Serenevy <dean@serenevy.net>
 
 
@@ -30,10 +30,6 @@ RUN adduser                 \
     --disabled-password     \
     --disabled-login        \
     syncthing
-
-COPY syncthing.gpg  /tmp/syncthing.gpg
-RUN  apt-key add    /tmp/syncthing.gpg
-COPY syncthing.list /etc/apt/sources.list.d/syncthing.list
 
 RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) -- \
  apt-get install -y --no-install-recommends \
