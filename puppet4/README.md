@@ -10,7 +10,7 @@ ssldir:
     docker run --rm                  \
         -h puppet.machinemotion.com  \
         -v /srv/puppet:/opt/puppet   \
-        cmminc/puppetmaster:latest   \
+        cmminc/puppetmaster4:latest  \
         /docker/init
 
 This will initialize configuration files and generate and sign a server
@@ -27,7 +27,7 @@ Running Container
         -v /srv/puppet:/opt/puppet   \
         -p 127.0.0.1:8140:8140       \
         --name puppet4               \
-        cmminc/puppetmaster:latest
+        cmminc/puppetmaster4:latest
 
 
 Client Management

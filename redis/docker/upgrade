@@ -47,7 +47,26 @@ EOF
 conffile /etc/redis/redis.conf "$ETC_DIR/redis.conf"
 
 if [ -f "$ETC_DIR/redis.conf" -a "$CURRENT_VERSION" -lt "1" ]; then
-    echo ""
+    cat <<EOF
+Protected mode is a layer of security protection, in order to avoid that
+Redis instances left open on the internet are accessed and exploited.
+
+When protected mode is on and if:
+
+1) The server is not binding explicitly to a set of addresses using the
+   "bind" directive.
+2) No password is configured.
+
+The server only accepts connections from clients connecting from the
+IPv4 and IPv6 loopback addresses 127.0.0.1 and ::1, and from Unix domain
+sockets.
+
+When run in a container, connections from the host machine will trigger
+this protection. If you intend to use passwordless redis and limit access
+to safe interfaces via the docker -p option, you probably want to disable
+protected-mode.
+
+EOF
     echo -n "Enable protected-mode (Y/N) [default=N] ? "
     read rv
     if (grep -q ^protected-mode "$ETC_DIR/redis.conf"); then
