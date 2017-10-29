@@ -187,7 +187,7 @@ sub images {
 }
 
 sub inspect {
-    die "Unexpected IDs: @_" if grep /[^0-9a-fA-F]/, @_;
+    die "Unexpected IDs: @_" if grep !/\A(?:sha256:)?[0-9a-fA-F]+\z/, @_;
     return [] unless @_;
     decode_json(qx| docker inspect @_ |);
 }
