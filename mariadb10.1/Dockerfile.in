@@ -1,0 +1,54 @@
+
+## This is a release builder, launch it, then once it is finished
+## export/import the result to get a fixed object.
+
+FROM debian:stretch
+MAINTAINER Dean Serenevy <dean@serenevy.net>
+
+
+# CONFIGURATION
+#--------------
+VOLUME ["/opt/mariadb"]
+
+
+# BUILDING
+#---------
+INCLUDE ../_includes/00_prepare.docker
+
+ENV UID_MARIADB 201
+ENV GID_MARIADB 201
+
+INCLUDE ../_includes/05_localenv.docker
+INCLUDE ../_includes/10_setup.docker
+
+# MAIN
+#-----
+RUN addgroup --gid $GID_MARIADB mysql
+RUN adduser --system        \
+    --home /var/lib/mysql   \
+    --shell /bin/false      \
+    --no-create-home        \
+    --uid $UID_MARIADB      \
+    --gid $GID_MARIADB      \
+    --disabled-password     \
+    --disabled-login        \
+    mysql
+
+RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) -- \
+ apt-get install -y --no-install-recommends \
+    mariadb-server \
+ && apt-get clean'
+
+COPY docker /docker
+
+
+# CLEANUP
+#--------
+INCLUDE ../_includes/99_cleanup.docker
+
+
+# RUNNING
+#--------
+EXPOSE 3306
+
+CMD exec docker/run
