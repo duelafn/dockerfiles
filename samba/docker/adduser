@@ -29,7 +29,8 @@ sub MAIN {
     usage("PASSWORD required")    unless $passwd;
     die "Passwords did not match, try again.\n" unless $passwd eq prompt("   Again: ", -te => "*");
     my $dsmb = DockerSamba->new;
-    $dsmb->add_user($uname);
+    my $user = $dsmb->add_user($uname);# prints "Added user bob." from smbpasswd(8)
+    say "  with uid/gid $$user{uid}:$$user{gid}";
     $dsmb->set_passwd($uname, $passwd);
 }
 
