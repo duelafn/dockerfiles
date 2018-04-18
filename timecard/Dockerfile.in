@@ -1,5 +1,6 @@
 
-FROM debian:jessie
+# php7.0
+FROM debian:stretch
 MAINTAINER Dean Serenevy <dean@serenevy.net>
 
 
@@ -28,13 +29,15 @@ INCLUDE ../_includes/10_setup.docker
 
 # MAIN
 #-----
+# barcode, ghostscript, imagemagick for barcode rendering and conversion to png
 RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) -- \
  apt-get install -y --no-install-recommends \
     apache2 \
     barcode \
+    ghostscript \
     imagemagick \
-    libapache2-mod-php5 \
-    php5-mysqlnd \
+    libapache2-mod-php \
+    php7.0-mysql \
     ssmtp \
  && apt-get clean'
 
@@ -44,8 +47,7 @@ RUN rm -f /etc/apache2/sites-enabled/000-default.conf
 RUN ln -s /opt/timeclock/etc/site.conf /etc/apache2/sites-enabled/timeclock.conf
 
 # php
-RUN sed -i '/^session\.use_strict_mode/d'                        /etc/php5/apache2/php.ini
-RUN sed -i '/^;\?date\.timezone/cdate.timezone = "'$TIME_ZONE'"' /etc/php5/apache2/php.ini
+RUN sed -i '/^;\?date\.timezone/cdate.timezone = "'$TIME_ZONE'"' /etc/php/7.0/apache2/php.ini
 
 # ssmtp
 RUN sed -i '/^#\?FromLineOverride/cFromLineOverride=YES' /etc/ssmtp/ssmtp.conf
