@@ -23,7 +23,7 @@ use Carp;
 
 use Getopt::Long qw/:config bundling/;
 use Hash::Util qw/ lock_keys /;
-our $VERSION = '1.0.0';# Created: 2015-04-22
+our $VERSION = '1.0.1';# Created: 2015-04-22
 
 our %OPT;
 our @OPT_SPEC =
@@ -227,7 +227,7 @@ sub pull_image {
     my ($opt, $image, $tag) = @_;
     return unless $tag;
     run_ok(docker => pull => $image); say "";
-    run_ok(docker => tag => -f => $image => $tag) and say "" if $tag and $tag =~ /\D/ and $image ne $tag;
+    run_ok(docker =>  tag => $image => $tag) and say "" if $tag and $tag =~ /\D/ and $image ne $tag;
 }
 
 sub guess_config {
