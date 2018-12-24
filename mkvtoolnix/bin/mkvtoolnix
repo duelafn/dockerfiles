@@ -16,7 +16,7 @@ use strict; use warnings; use 5.014;
 
 use Getopt::Long qw/:config posix_default bundling pass_through/;
 use Hash::Util qw/ lock_keys /;
-our $VERSION = '0.1.0';# Created: 2017-01-01
+our $VERSION = '1.0.0';# Created: 2017-01-01
 
 our %OPT = (
     volume_base  => "/home/user",
@@ -32,6 +32,7 @@ usage: $_[0] [options] ACTION ARG(S)
 ACTIONS
 
   $_[0] mkvmerge ...
+  $_[0] mkvextract ...
   $_[0] ffmpeg ...
   $_[0] mmg ...
   $_[0] mkvtoolnix-gui ...
@@ -92,7 +93,23 @@ action mkvmerge => sub {
     );
 };
 
+action call => sub {
+    my ($action, $name, @in) = @_;
+    my %volumes = get_volumes(@in);
+    my @args = replace_volumes([ grep { !-d $_ } @in ], %volumes);
+    docker(
+        $OPT{docker_image},
+        [ "/usr/bin/$name", @args ],
+        volumes => \%volumes,
+        workdir => "$OPT{volume_base}/workdir",
+    );
+};
+
 get_options( \%OPT, @OPT_SPEC );
+if (!@ARGV or !exists($ACTIONS{$ARGV[0]})) {
+    my $exe = (File::Spec->splitpath($0))[2];
+    unshift @ARGV, call => $exe if $exe ne 'mkvtoolnix';
+}
 call_action( @ARGV );
 
 
