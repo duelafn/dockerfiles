@@ -347,8 +347,14 @@ package Image {
         return $$lst[0];
     }
 
+    has "warn",          (is => 'rw', isa => 'Str', default => '');
+    has "warnings",      (is => 'ro', isa => 'ArrayRef', default => sub { [] });
+    sub add_warning($self, @msg) { push @{$self->warnings}, "@msg"; }
+    sub show_warnings($self) { say "WARNING: $_" for @{$self->warnings} }
+
+    has "build",         (is => 'rw', isa => 'Str', default => 'yes');
     has "build_user",    (is => 'rw', isa => 'Str');
-    has "check_upgrade", (is => 'rw', isa => 'Str');
+    has "check_upgrade", (is => 'rw', isa => 'StringArray', coerce => 1);
     has "depends",       (is => 'rw', isa => 'StringArray', coerce => 1);
     has "load",          (is => 'rw', isa => 'Str');
     has "max_age",       (is => 'rw', isa => 'Str');
@@ -409,7 +415,7 @@ package Image {
         my $fname_base = ($self->repository =~ s/\//./gr) if $self->repository;
         $fname_base .= ($fname_base ? "." : "") . $self->container;
         my $dir = join("/", @path);
-        opendir my $D, $dir or die "Cannot open $dir: $!";
+        return unless opendir my($D), $dir;
         return grep -f $_, map "$dir/$_", grep /^\Q$fname_base\E\W/, readdir $D;
     }
 
@@ -508,6 +514,8 @@ action upkeep => sub {
     remove_images(@rm_images);
     remove_saves(@rm_saves);
     bump_services(@services);
+
+    $_->show_warnings for @img;
 };
 
 
@@ -566,16 +574,17 @@ sub _get_images($conf, $key, $img, $all, $done) {
     return if $$done{$key};
     for my $pre ($img->prerequisites) {
         next if $$done{$pre};
-        $$done{$pre} = 1;
         if (exists($$all{$pre})) {
             push @rv, _get_images($conf, $pre, $$all{$pre}, $all, $done);
         } elsif ($$conf{pull_others}) {
             push @rv, Image->new(key => $pre, pull => 1);
         }
+        $$done{$pre} = 1;
     }
 
-    return if $$done{$key};
+    return @rv if $$done{$key};
     $$done{$key} = 1;
+    $img->add_warning($img->key() . " was built") if CBool($img->warn);
     push @rv, $img;
     return @rv;
 }
@@ -591,7 +600,10 @@ sub get_images($conf) {
         }
         $image{$key} = Image->new(%opt);
     }
-    return map _get_images($conf, $_, $image{$_}, \%image, \%done), sort keys %image;
+    return map _get_images($conf, $_, $image{$_}, \%image, \%done), (
+        grep CBool($image{$_}->build() // 'yes'),  # NOTE: "auto" is false
+        sort keys %image
+    );
 }
 
 sub push_remotes($remote, @repos) {
@@ -638,22 +650,28 @@ sub prereq_updated($img, $prereqs) {
     return 0;
 }
 
-sub upgrade_needed($name) {
-    return 0 unless $name;
-    # Start an upgrade with assume-no. Look at output to see if it looks
-    # like something needed updated.
-    my $rv = eval { safe_pipe { capture_err => 1 }, [ docker => exec => -i => $name => sh => -c => 'apt-get update && apt-get -u dist-upgrade --assume-no' ] } || "$@";
-    return 1 if $rv =~ /Do you want to continue/;
-    # On error, either container doesn't exist or apt failed (or something
-    # else). If the container isn't running, do the upgrade so that
-    # upgrades happen even for containers that only run sometimes. Don't
-    # try to upgrade for any other error -- assume the error would prevent
-    # the upgrade from succeeding anyway.
-    return 1 if $rv =~ /No such container/;
-    # If the command failed, we'd like to be able to see why.
-    say STDERR "$@" if $@;
+sub upgrade_needed($names) {
+    return 0 unless $names and @$names;
+    my $doit = 0;
+    for my $name (@$names) {
+        # Start an upgrade with assume-no. Look at output to see if it looks
+        # like something needed updated.
+        my $rv = eval { safe_pipe { capture_err => 1 }, [ docker => exec => -i => $name => sh => -c => 'apt-get update && apt-get -u dist-upgrade --assume-no' ] } || "$@";
+        return 1 if $rv =~ /Do you want to continue/;
+        # On error, either container doesn't exist or apt failed (or something
+        # else). If the container isn't running, do the upgrade so that
+        # upgrades happen even for containers that only run sometimes. Don't
+        # try to upgrade for any other error -- assume the error would prevent
+        # the upgrade from succeeding anyway.
+        if ($rv =~ /No such container/) {
+            $doit = 1;
+        } else {
+            # If the command failed, we'd like to be able to see why.
+            say STDERR "$@" if $@;
+        }
+    }
     # We get here on unknown error or if the apt-get command reports no changes.
-    return 0;
+    return $doit;
 }
 
 sub make($dir, $target, %opt) {
