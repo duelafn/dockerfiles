@@ -1,0 +1,801 @@
+#!/usr/bin/perl -w
+# Copyright (C) 2018  Dean Serenevy
+# SPDX-License-Identifier: MIT
+use strict; use warnings; use 5.020;
+
+use Getopt::Long qw/:config bundling/;
+use Hash::Util qw/ lock_keys /;
+our $VERSION = '1.0.0';# Created: 2018-12-11
+
+our %OPT = (
+    force_update => 0,
+);
+our @OPT_SPEC =
+qw/ help|h version noact|no-act|dry-run DEBUG quiet|q
+    force_update|force-update!
+  /;
+sub USAGE { <<"__USAGE__" };
+usage: $_[0] [options] ACTION ARG(S)
+
+ACTIONS
+
+  $_[0] clean
+
+    Clean up uninteresting containers (exited) and images (dangling).
+
+  $_[0] upkeep CONFIG
+
+       --force-update   force update all containers (like settings max_age to "0 days")
+
+    For each configured image, rebuild if directory version is unavailable
+    or if image is of named version is more than "max_age" old.
+
+
+OPTIONS
+
+ --no-act,
+ --dry-run           don't change files, just list what would be done
+
+ --DEBUG             print additional information while running
+ --help, -h          this usage message
+ --version           show script version
+
+
+CONFIG
+
+  search_path: /home/duelafn/docker
+  build_user: "duelafn:docker"
+  push: "docker.example.com:2276"
+  pull_others: 1            # pull referenced but unspecified images from docker hub
+  save: /cache/foo          # docker save to .tar.zst in this folder
+  max_age: "2 weeks"        # force rebuild if older than this even if unchanged
+  prune:
+    major:   1
+    history: 3
+    keep:   "2 weeks"
+  prune_saves:
+    major:   3
+    history: 3
+    keep:   "3 months"
+
+  images:
+    # Too old, don't bother updating
+    "debian:wheezy":
+      pull: 0
+
+    "utgllc/samba:latest":
+      pull: "files.machinemotion.com:2276/utgllc/samba:latest"
+
+    "duelafn/postgres":
+      load: /cache/foo         # load file name or latest (natural-sort) in directory
+
+    "utgllc/timeclock":
+      path: timeclock
+      depends: "utgllc/mariadb"
+      push: "files.machinemotion.com:2276"
+
+    "utgllc/mariadb":
+      path: mariadb
+      services:
+        - docker-syncthing     # restart service
+        - ":SLEEP 10"
+        - ":MSG ..."           # print message
+        - ":RELOAD my-service" # reload service
+      tags: [ "<VERISION>", "latest" ]   # default
+__USAGE__
+
+#-----------------------------------------------------------------
+# BEGIN             Dean::Util code version 1.082
+#
+#  use Dean::Util qw/ BOLD parse_date safe_pipe do_as cat trim qbash /;
+
+use Carp;
+#BEGIN: BOLD, 1 line
+sub BOLD($) { my $x = shift; (defined $x and $x ne '') ? "\e[1m".$x."\e[22m" : '' }
+#BEGIN: parse_date
+sub parse_date {
+  require Date::Manip;
+  require DateTime;
+  local $_ = shift;
+  my %opt = ( clone => 1, @_ );
+  return unless defined;
+  return $opt{clone} ? $_->clone : $_ if eval { $_->DOES("DateTime") };
+
+  # Work around oddity in parsing of "Aug 2012":
+  $_ = "1 $_" if /^\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d{4}\s*$/;
+
+  # Work around odd date format in my camera
+  s|^(\d{4}):(\d\d):(\d\d\s+\d{1,2}:\d\d:\d\d)$|$1-$2-$3|;
+
+  my $dm = Date::Manip::ParseDate($_);
+  return unless $dm;
+  my @fmt = qw/year %Y month %m day %d hour %H minute %M second %S/;
+  push @fmt, qw/ time_zone %z / unless $opt{floating};
+  DateTime->new(Date::Manip::UnixDate($dm, @fmt));
+}
+#END: parse_date
+
+#BEGIN: safe_pipe
+sub safe_pipe {
+    my $opt = {};
+    $opt = shift if 'HASH' eq ref($_[0]);
+    my $command = shift;
+    $command = [$command] unless ref $command;
+    say STDERR "@$command" if exists($$opt{debug}) and $$opt{debug};
+    local $SIG{CHLD};
+    my @exit = ('ARRAY' eq ref($$opt{allow_error_exit})) ? @{$$opt{allow_error_exit}} : ();
+
+    my $chld = open my $RESULT, "-|";
+    die "Can't fork: $!" unless defined($chld);
+
+    if ($chld) { # original process: receiver (reads $RESULT)
+        my @x = <$RESULT>;
+        waitpid $chld, 0;
+        if (@exit or !$$opt{allow_error_exit}) {
+            local $" = "";
+            my $stat = $? >> 8;
+            if    ($? == -1) { croak "failed to execute: $!" }
+            elsif ($? & 127) { croak sprintf("child died with signal %d, %s coredump\n%s", ($? & 127),  (($? & 128) ? 'with' : 'without'), "@x") }
+            elsif ($stat and !grep($_ == $stat, @exit)) { croak sprintf("child exited with value %d\n%s", $stat, "@x") }
+        }
+        if (wantarray) {
+            chomp(@x) if $$opt{chomp};
+            return @x;
+        } else {
+            return join('', @x);
+        }
+    }
+
+    # Note below: Can't just exit() or die() or we will run END{} blocks...
+    # The solution used  ripped indirectly from POE::Wheel::Run:
+    #    http://stackoverflow.com/questions/4307482/how-do-i-disable-end-blocks-in-child-processes
+
+    else { # child
+        if (open STDIN, "-|") { # child: processor (reads STDIN, writes STDOUT)
+            open STDOUT, ">&STDERR" or die "Can't dup STDERR: $!" if !defined(wantarray) and !$$opt{capture_err};
+            open STDERR, ">&STDOUT" or die "Can't dup STDOUT: $!" if $$opt{capture_err};
+            { exec { $$command[0] } @$command; }
+            # Kill ourselves (causes "child died with signal 9"):
+            close STDIN; close STDOUT; close STDERR;
+            eval { CORE::kill( KILL => $$ ); };
+            exit 1;
+        } else {                # grandchild: sender (writes STDOUT)
+            print @_;
+            # Kill ourselves
+            close STDIN; close STDOUT; close STDERR;
+            eval { CORE::kill( KILL => $$ ); };
+            exit 0;
+        }
+    }
+}
+#END: safe_pipe
+
+#BEGIN: do_as
+sub do_as {
+  my $func = pop;
+  my ($user, %opt) = @_;
+  my $group = ($user =~ s/:(.*)//) ? $1 : "";
+
+  my (undef,undef,$uid,$gid,$quota,$comment,$gcos,$dir) = getpwnam($user);
+  $gid = getgrnam($group) if $group;
+  die unless defined($uid) and defined($gid);
+  local %ENV = %ENV;
+
+#   for (`pgrep -u "$user" startkde`) {
+#     next unless /^(\d+)$/;
+#     next unless my $file = `cat "/proc/$1/environ"`;
+#     for (split /\0/, $file) {
+#       next unless /^(\w+)=(.*)$/;
+#       $ENV{$1} = $2;
+#     }
+#   }
+
+  $! = 0; local $) = $gid; die "Can't set gid: $!" if 0+$!;
+  $! = 0; local $> = $uid; die "Can't set uid: $!" if 0+$!;
+  $ENV{USER} = $user;
+  $ENV{HOME} = $dir;
+
+  $func->();
+}
+#END: do_as
+
+#BEGIN: cat
+sub cat {
+  my $mode = (ref($_[0]) eq 'SCALAR') ? ${shift()} : "<";
+  my $f = (@_) ? $_[0] : $_;
+  open my $F, $mode, $f or croak "Can't open $f for reading: $!";
+  if (wantarray) {
+    my @x = <$F>; close $F; return @x;
+  } else {
+    local $/ = undef; my $x = <$F>; close $F; return $x;
+  }
+}
+#END: cat
+
+#BEGIN: trim
+sub trim {
+  my ($n, $wantarray) = (scalar @_, wantarray);
+  if ($n == 0 and not defined $wantarray)
+    { s/^\s+//; s/\s+$//; return }
+  if ($n == 0)
+    { local $_ = $_; s/^\s+//; s/\s+$//; return $_ }
+  if (defined $wantarray)
+    { my @x = @_; for (@x) { s/^\s+//; s/\s+$//; } return $wantarray ? @x : $x[0] }
+
+  for (@_) { s/^\s+//; s/\s+$//; }
+}
+#END: trim
+
+#BEGIN: qbash
+sub qbash($) {
+    state $unprintable = '[^\pL\pM\pN\pP\pS\pZ[:print:]\s]';
+    require Encode;
+    local $_ = shift;
+    if (/$unprintable/o) {
+      my $utf8 = eval { !Encode::is_utf8($_) && Encode::decode( "UTF-8", $_, 1 ) };
+      croak "Unquotable expression: $_" if !$utf8 or $@ or $utf8 =~ /$unprintable/o;
+
+      # Encoded UTF-8!
+      $utf8 =~ s/'/'\\''/g;
+      no re 'taint';
+      $utf8 =~ /^(.*)$/s and return "'".Encode::encode( "UTF-8", $1 )."'";
+    }
+    s/'/'\\''/g;
+    no re 'taint';
+    /^([\w\-\+\.\/]+)$/a and return "$1"; # Pretty print simple things
+    /^(.*)$/s and return "'$1'";
+}
+#END: qbash
+
+#
+# END               Dean::Util code version 1.082
+#-----------------------------------------------------------------
+use File::Path qw/ make_path /;
+use File::Spec::Functions qw/ splitpath /;
+use JSON;
+use Sort::Key::Natural qw/ rnatsort /;
+use Time::Piece;
+use YAML::XS qw/ LoadFile /;
+
+use Moose::Util::TypeConstraints;
+subtype 'StringArray' => as 'ArrayRef[Str]';
+coerce 'StringArray'  => from 'Str' => via { [ $_ ] };
+use experimental 'signatures';
+
+sub SAY {
+    say BOLD join "", @_ unless $OPT{quiet};
+}
+
+package Image {
+    use Moose;
+    use JSON;
+    use re 'taint'; use 5.020;
+    use experimental 'signatures';
+    use File::stat;
+
+    sub BUILD($self, @args) {
+        $self->parse_key;
+    }
+
+    has "id",            (is => 'rw', isa => 'Str');
+    has "key",           (is => 'rw', isa => 'Str', required => 1);
+    has "repository",    (is => 'rw', isa => 'Str', lazy_build => 1);
+    has "container",     (is => 'rw', isa => 'Str', lazy_build => 1);
+    has "tag",           (is => 'rw', isa => 'Str', lazy_build => 1);
+    sub _build_repository($self) { $self->parse_key->{repository} }
+    sub _build_container($self) { $self->parse_key->{container} }
+    sub _build_tag($self) { $self->parse_key->{tag} }
+    sub parse_key($self, $key=undef) {
+        $key //= $self->key;
+        my ($a, $b) = split /:/, $key;
+        my @path = split /\//, $a;
+        my $c = pop @path;
+        my $rv = {
+            repository => join("/", @path),
+            container  => $c,
+            tag => ($b// 'latest'),
+        };
+        $self->repository($$rv{repository});
+        $self->container($$rv{container});
+        $self->tag($$rv{tag});
+        return $rv;
+    }
+
+    sub rc($self) {
+        return $self->container unless $self->repository;
+        return $self->repository() . "/" . $self->container;
+    }
+
+    has "version",       (is => 'rw', isa => 'Str', lazy_build => 1);
+    sub _build_version($self) {
+        my $bd = $self->builddir;
+        return unless $bd and -f "$bd/revision";
+        my $rev = main::trim(scalar main::cat("$bd/revision"));
+        return unless length($rev // '');
+        my $upd = eval { main::trim(scalar main::cat("$bd/update")) } || "0";
+        return "$rev.$upd";
+    }
+
+    sub labels($self) {
+        my $r = $self->rc;
+        my @lab;
+        for (@{$self->tags // []}) {
+            if ($_ eq '<VERSION>') {
+                push @lab, "$r:r" . $self->version;
+            } elsif (/</) {
+                die "Unknown tags directive: '$_'";
+            } else {
+                push @lab, "$r:$_";
+            }
+        }
+        return @lab;
+    }
+
+    sub created($self) { ($self->inspect_info || {})->{Created} // '' }
+
+    has "inspect_info", (is => 'rw', isa => 'Maybe[HashRef]', lazy_build => 1);
+    sub _build_inspect_info($self) {
+        my $lst = eval {
+            decode_json(
+                scalar main::safe_pipe(
+                    { capture_err => 1 },
+                    [ docker => inspect => ($self->id || $self->key) ]
+                )
+            )
+        };
+        return unless $lst and @$lst;
+        return $$lst[0];
+    }
+
+    has "build_user",    (is => 'rw', isa => 'Str');
+    has "check_upgrade", (is => 'rw', isa => 'Str');
+    has "depends",       (is => 'rw', isa => 'StringArray', coerce => 1);
+    has "load",          (is => 'rw', isa => 'Str');
+    has "max_age",       (is => 'rw', isa => 'Str');
+    has "path",          (is => 'rw', isa => 'Str');
+    has "prune",         (is => 'rw', isa => 'HashRef');
+    has "prune_saves",   (is => 'rw', isa => 'HashRef');
+    has "pull",          (is => 'rw', isa => 'Str');
+    has "pull_others",   (is => 'rw', isa => 'Bool');
+    has "push_remotes",  (is => 'rw', isa => 'StringArray', coerce => 1);
+    has "save",          (is => 'rw', isa => 'Str');
+    has "search_path",   (is => 'rw', isa => 'StringArray', coerce => 1);
+    has "services",      (is => 'rw', isa => 'StringArray', coerce => 1);
+    has "tags",          (is => 'rw', isa => 'StringArray', coerce => 1, default => sub{[ "<VERSION>", "latest" ]});
+
+    has "from",          (is => 'rw', isa => 'Str', lazy_build => 1);
+    sub _build_from($self) {
+        return "" unless $self->dockerfile_code() =~ /^FROM\s+(\S+)/m;
+        return $1;
+    }
+
+    has "builddir",      (is => 'rw', isa => 'Str', lazy_build => 1);
+    sub _build_builddir($self) {
+        my $path = $self->path;
+        return "" unless $path;
+        return $path if $path =~ /^\//;
+        for my $d (@{ $self->search_path // [] }) {
+            return "$d/$path" if -d "$d/$path" and (-f "$d/$path/Dockerfile.in" or -f "$d/$path/Dockerfile");
+        }
+        return "";
+    }
+
+    has "dockerfile",    (is => 'rw', isa => 'Str', lazy_build => 1);
+    sub _build_dockerfile($self) { return $self->builddir() . "/Dockerfile" }
+
+    has "dockerfile_code", (is => 'rw', isa => 'Str', lazy_build => 1);
+    sub _build_dockerfile_code($self) {
+        return "" unless open my $F, "<", $self->dockerfile;
+        local $/;
+        return scalar <$F>;
+    }
+
+    sub basename($self, $path='.', @append) {
+        my $dir = $path;
+        $dir .= "/" . $self->repository if $self->repository;
+        my $fname = '';
+        $fname = ($self->repository =~ s/\//./gr) if $self->repository;
+        $fname .= ($fname ? "." : "") . $self->container;
+        my $tag = $self->tag || '';
+        $tag = "r" . $self->version if $tag eq 'latest' and $self->version;
+        $fname .= ":" . $tag if $tag;
+        $fname .= "_" . join("", @append) if @append;
+        return "$dir/$fname";
+    }
+
+    sub list_files($self, $path='.') {
+        my @path = ($path);
+        push @path, $self->repository if $self->repository;
+        my $fname_base = ($self->repository =~ s/\//./gr) if $self->repository;
+        $fname_base .= ($fname_base ? "." : "") . $self->container;
+        my $dir = join("/", @path);
+        opendir my $D, $dir or die "Cannot open $dir: $!";
+        return grep -f $_, map "$dir/$_", grep /^\Q$fname_base\E\W/, readdir $D;
+    }
+
+    sub old_saves($self, $conf=undef) {
+        # Conf: major => 3, history => 3, keep => "3 months"
+        my @files;
+        $conf //= $self->prune_saves;
+        return unless $conf and %$conf;
+        my $dirname = $self->save;
+        return unless -d $dirname;
+        my $keep_major   = $$conf{major}   || 1;
+        my $keep_history = $$conf{history} || 1;
+        my $keep_time    = main::parse_date(($$conf{keep} || "1 day") . ' ago')->epoch;
+        my ($major, $keep);
+        for my $f (main::rnatsort($self->list_files($dirname))) {
+            next unless $f =~ /:r(\d+)/;
+            $major //= (my $M = $1);
+            $keep = 0;
+            $keep = 1 if $keep_time lt stat($f)->mtime;   # Too new, keep it
+            $keep = 1 if $keep_history-- > 0;             # Keep minimum number
+            if ($M != $major) {
+                $keep = 1 if --$keep_major > 0;           # Keep minimum number of major versions
+                $major = $M;
+            }
+            push @files, $f unless $keep;
+        }
+        return @files;
+    }
+
+    sub prerequisites($self) {
+        return grep /\S/, $self->from, @{$self->depends // []};
+    }
+
+    no Moose;
+    __PACKAGE__->meta->make_immutable;
+}
+
+
+
+our %ACTIONS; sub action;
+action help => sub { usage() };
+
+action clean => sub {
+    my ($action, @args) = @_;
+    remove_containers(get_removable_containers());
+    remove_images(get_removable_images());
+};
+
+action upkeep => sub {
+    my ($action, $conffile) = @_;
+    my $conf = LoadFile($conffile);
+    my @img = get_images($conf);
+    my (@services, @rm_images, @rm_saves, %updated);
+    for my $img (@img) {
+        push @rm_images, prune_revisions($img->rc, $img->prune) if $img->prune;
+        push @rm_saves, $img->old_saves;
+
+        # Skip updating image if newer than requested horizon
+        my $force = $OPT{force_update} || prereq_updated($img, \%updated);
+        if (!$force and $img->created) {
+            my $horizon = parse_date(($img->max_age() || "3 days") . " ago")->ymd;
+            next if $img->created ge $horizon;
+        }
+
+        if ($img->pull) {
+            if (is_bool($img->pull)) {
+                $updated{$img->key} = pull($img->key) if CBool($img->pull)
+            } else {
+                $updated{$img->key} = pull($img->pull, $img->key)
+            }
+        }
+
+        elsif ($img->load) {
+            my $file = $img->load;
+            $file = (rnatsort($img->list_files($img->load)))[0] if -d $file;
+            $updated{$img->key} = load($file) if -f $file;
+        }
+
+        elsif ($img->builddir) {
+            if ($force || upgrade_needed($img->check_upgrade)) {
+                make($img->builddir, "force-upgrade", user => $img->build_user);
+                $updated{$img->key} = 1;
+            } else { next }
+            if ($img->save) {
+                my $fname = $img->save;
+                $fname = $img->basename($img->save, localtime->ymd, ".tar") if -d $fname;
+                save($fname, $img->labels);
+            }
+            for my $remote (@{$img->push_remotes // []}) {
+                push_remotes($remote, $img->labels);
+            }
+        }
+
+        push @services, @{$img->services // []};
+    }
+    remove_images(@rm_images);
+    remove_saves(@rm_saves);
+    bump_services(@services);
+};
+
+
+get_options( \%OPT, @OPT_SPEC );
+call_action( @ARGV );
+
+
+sub systemctl_status($service) {
+    return $1 if safe_pipe([ systemctl => '--no-pager', show => $service ]) =~ /^ActiveState=(\S+)/m;
+    return '';
+}
+
+sub bump_services(@services) {
+    my %seen;
+    for (@services) {
+        if (s/:SLEEP\s*//) {
+            if ($OPT{noact}) { say "Would sleep $_ seconds" }
+            else { SAY "sleep $_ seconds"; sleep $_ }
+        }
+
+        elsif (s/:MSG\s*//) {
+            if ($OPT{noact}) { say "Would message '$_'" }
+            else { SAY "MESSAGE: $_" }
+        }
+
+        elsif (s/:RELOAD\s*//) {
+            if (not $seen{$_} and systemctl_status($_) eq 'active') {
+                $seen{$_} = 1;
+                if ($OPT{noact}) { say "Would reload '$_'" }
+                else { SAY "reload '$_'"; system systemctl => '--no-pager', reload => $_ }
+            }
+        }
+
+        else {
+            if (($seen{$_}||0) < 2 and systemctl_status($_) eq 'active') {
+                $seen{$_} = 2;
+                if ($OPT{noact}) { say "Would restart '$_'" }
+                else { SAY "restart '$_'"; system systemctl => '--no-pager', restart => $_ }
+            }
+        }
+    }
+}
+
+sub is_bool($val) {
+    return 1 if $val =~ /^(?:0|1|y(?:es)?|no?|t(?:rue)?|f(?:alse)?)$/i;
+    return 0;
+}
+
+sub CBool($val) {
+    return 1 if $val =~ /^(?:1|y(?:es)|t(?:rue))$/i;
+    return 0;
+}
+
+sub _get_images($conf, $key, $img, $all, $done) {
+    my @rv;
+    return if $$done{$key};
+    for my $pre ($img->prerequisites) {
+        next if $$done{$pre};
+        $$done{$pre} = 1;
+        if (exists($$all{$pre})) {
+            push @rv, _get_images($conf, $pre, $$all{$pre}, $all, $done);
+        } elsif ($$conf{pull_others}) {
+            push @rv, Image->new(key => $pre, pull => 1);
+        }
+    }
+
+    return if $$done{$key};
+    $$done{$key} = 1;
+    push @rv, $img;
+    return @rv;
+}
+
+sub get_images($conf) {
+    my (%image, %done);
+    for my $key (keys %{$$conf{images}}) {
+        my %opt = (%$conf, %{$$conf{images}{$key}}, key => $key);
+        $opt{push_remotes} = delete($opt{push}) if exists($opt{push});
+        # Deep merge some parameters:
+        for my $k (grep exists($opt{$_}), qw/ prune prune_saves /) {
+            $opt{$k} = { map %{$$_{$k} // {}}, $conf, $$conf{images}{$key} };
+        }
+        $image{$key} = Image->new(%opt);
+    }
+    return map _get_images($conf, $_, $image{$_}, \%image, \%done), sort keys %image;
+}
+
+sub push_remotes($remote, @repos) {
+    return say("Would push @repos to $remote") if $OPT{noact};
+    for my $repo (@repos) {
+        SAY "push $repo to $remote";
+        safe_pipe [ docker => tag => $repo => "$remote/$repo" ];
+        safe_pipe [ docker => push => "$remote/$repo" ];
+    }
+}
+
+sub pull($src, $dest=undef) {
+    return say("Would pull '$src'", (($dest and $dest ne $src) ? " and tag as $dest" :"")) if $OPT{noact};
+    SAY "Pull '$src'", (($dest and $dest ne $src) ? " and tag as $dest" :"");
+    return 0 if safe_pipe([ docker => pull => $src ]) =~ /Status: Image is up to date/;
+    safe_pipe [ docker => tag  => $src => $dest ] if $dest and $dest ne $src;
+    return 1;
+}
+
+# docker save -o ubuntu.tar ubuntu:lucid ubuntu:saucy
+sub save($path, @repo) {
+    return say("Would save @repo to $path") if $OPT{noact};
+    SAY "save @repo to $path";
+    my (undef, $dir, $fname) = splitpath($path);
+    make_path($dir);
+    my $q_docker = join " ", docker => save => map qbash($_), @repo;
+    my $q_path = qbash($path . ".zst");
+    system "$q_docker | zstd -o $q_path";
+}
+
+# docker load --input fedora.tar    # May contain multiple images!
+#    Loaded image: fedora:rawhide
+#    Loaded image: fedora:20
+sub load($file) {
+    return say("Would load $file into docker") if $OPT{noact};
+    SAY "load $file into docker";
+    my $q_fname = qbash($file);
+    system "zstd --stdout $q_fname | docker load";
+    return 1;
+}
+
+sub prereq_updated($img, $prereqs) {
+    return 1 if !$OPT{noact} and grep $$prereqs{$_}, $img->prerequisites;
+    return 0;
+}
+
+sub upgrade_needed($name) {
+    return 0 unless $name;
+    # Start an upgrade with assume-no. Look at output to see if it looks
+    # like something needed updated.
+    my $rv = eval { safe_pipe { capture_err => 1 }, [ docker => exec => -i => $name => sh => -c => 'apt-get update && apt-get -u dist-upgrade --assume-no' ] } || "$@";
+    return 1 if $rv =~ /Do you want to continue/;
+    # On error, either container doesn't exist or apt failed (or something
+    # else). If the container isn't running, do the upgrade so that
+    # upgrades happen even for containers that only run sometimes. Don't
+    # try to upgrade for any other error -- assume the error would prevent
+    # the upgrade from succeeding anyway.
+    return 1 if $rv =~ /No such container/;
+    # If the command failed, we'd like to be able to see why.
+    say STDERR "$@" if $@;
+    # We get here on unknown error or if the apt-get command reports no changes.
+    return 0;
+}
+
+sub make($dir, $target, %opt) {
+    my $user = delete($opt{user});
+    $user = undef unless 0 == $>;
+    return say("Would make $target in $dir", ($user ? " as $user" : "")) if $OPT{noact};
+    SAY "Make $target in $dir", ($user ? " as $user" : "");
+    return do_as($user, sub { make($dir, $target, %opt) }) if $user;
+    safe_pipe [ make => -C => $dir, $target, @{$opt{env} || []} ];
+}
+
+sub remove_containers {
+    return unless @_;
+    return say "Would remove containers: @_" if $OPT{noact};
+    SAY "Remove containers: @_";
+    0 == system docker => rm  => @_;
+}
+
+sub get_removable_containers {
+    return safe_pipe { chomp => 1 }, [qw/ docker ps -qaf status=exited /];
+}
+
+sub remove_images {
+    return unless @_;
+    my $images = join "", (@_ > 2) ? map("\n  - $_", @_) : "@_";
+    return say("Would remove images: $images") if $OPT{noact};
+    SAY "Remove images: $images";
+    0 == system docker => rmi => @_;
+}
+
+sub remove_saves {
+    return unless @_;
+    my $saves = join "", (@_ > 2) ? map("\n  - $_", @_) : "@_";
+    return say("Would remove saves: $saves") if $OPT{noact};
+    SAY "Remove saves: $saves";
+    unlink @_;
+}
+
+sub get_removable_images {
+    return safe_pipe { chomp => 1 }, [qw/ docker images -qaf dangling=true /];# The <none> images
+}
+
+## prune_revisions: Does not use objects beacuse:
+##   1. it was written first
+##   2. The inspect sub below makes a bulk query to docker (faster)
+
+sub prune_revisions($repo, $conf) {
+    state $image = images();
+    state $running = { map +($_ => 1), containers() };
+    state $key_length = %$running ? length((keys %$running)[0]) : 0;
+
+    my $keep_major   = $$conf{major}   || 1;
+    my $keep_history = $$conf{history} || 1;
+    my $keep_time    = parse_date(($$conf{keep} || "1 day") . ' ago');
+
+    my $major;
+    my @prune;
+    for my $v (rnatsort keys %{$$image{$repo}}) {
+        my $img = $$image{$repo}{$v};
+        next unless $v =~ /^r?(\d+)(?:\.(\d+))?$/;# Strict format: r#.#  #.#  r#  #
+        my ($M, $m) = ($1, $2//0);
+        my $keep = 0;
+        $major //= $M; # last seen major version
+        $$img{created_dt} //= parse_date($$img{Created});
+
+        $keep = 1 if $$running{substr($$img{Id}, 0, $key_length)};  # Currently running! keep it
+        $keep = 1 if $$img{created_dt} gt $keep_time;               # Too new, keep it
+        $keep = 1 if $keep_history-- > 0;                           # Keep minimum number
+        if ($M != $major) {
+            $keep = 1 if --$keep_major > 0;                         # Keep minimum number of major versions
+            $major = $M;
+        }
+
+        push @prune, "$repo:$v" unless $keep;
+    }
+    return @prune;
+}
+
+sub images {
+    # skip first line (header)
+    my (undef, @rows) = qx| docker images --no-trunc |;
+    my (%repo, %id);
+    for (@rows) {
+        my ($repo, $tag, $id) = split;
+        next if $repo eq '<none>' or $tag eq '<none>';
+        die "Didn't expect duplicate repo:tag pair ($repo:$tag)!" if $repo{$repo}{$tag};
+        $repo{$repo}{$tag} = $id;
+        $id{$id}++;
+    }
+
+    $id{$$_{Id}} = $_ for @{ inspect(keys %id) };
+
+    for my $repo (keys %repo) {
+        for my $tag (keys %{$repo{$repo}}) {
+            $repo{$repo}{$tag} = $id{$repo{$repo}{$tag}};
+        }
+    }
+    return \%repo;
+}
+
+sub containers {
+    chomp(my @ids = qx| docker ps -q |);
+    return \@ids;
+}
+
+sub inspect {
+    die "Unexpected IDs: @_" if grep !/\A(?:sha256:)?[0-9a-fA-F]+\z/, @_;
+    return [] unless @_;
+    decode_json(qx| docker inspect @_ |);
+}
+
+
+sub action {
+    my $name = shift;
+    $name = [ $name ] unless ref($name);
+    unshift @_, "-action" if 1 == @_;
+    $ACTIONS{$_} = { -name => $_, @_ } for @$name;
+}
+
+sub call_action {
+    my $name = shift // "";
+    usage("No such action $name") unless exists $ACTIONS{$name};
+    my $action = $ACTIONS{$name};
+
+    my @arg = @_;
+    @arg = $$action{-build_args}->( $action, @_ ) if $$action{-build_args};
+
+    $$action{-action}->( $action, @arg );
+}
+
+sub get_options {
+    my $OPT = shift;
+    GetOptions $OPT, @_ or usage(1);
+    usage() if $$OPT{help} || $$OPT{version};
+    lock_keys(%$OPT, keys %$OPT, map /^(\w+)/, @_);
+}
+
+sub usage {
+    my $status = (@_ && $_[0] =~ /^\d+$/) ? shift(@_) : 0+@_;
+    print @_, "\n" if @_;
+    require File::Spec; my $exe = (File::Spec->splitpath($0))[2];
+    $OPT{$_} = $OPT{$_} ? "enabled" : "disabled" for map /^(\w+).*!/, @OPT_SPEC;
+    print $OPT{version} ? "$exe version $VERSION\n" : USAGE($exe);
+    exit $status;
+}
