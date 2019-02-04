@@ -514,6 +514,8 @@ action upkeep => sub {
     remove_images(@rm_images);
     remove_saves(@rm_saves);
     bump_services(@services);
+    remove_containers(get_removable_containers());
+    remove_images(get_removable_images());
 
     $_->show_warnings for @img;
 };
