@@ -12,7 +12,7 @@ our %OPT = (
 );
 our @OPT_SPEC =
 qw/ help|h version noact|no-act|dry-run DEBUG quiet|q
-    force_update|force-update!
+    force_update|force-update!  apt_proxy|apt-proxy=s
   /;
 sub USAGE { <<"__USAGE__" };
 usage: $_[0] [options] ACTION ARG(S)
@@ -26,6 +26,7 @@ ACTIONS
   $_[0] upkeep CONFIG
 
        --force-update   force update all containers (like settings max_age to "0 days")
+       --apt-proxy URL  set apt proxy for update checks
 
     For each configured image, rebuild if directory version is unavailable
     or if image is of named version is more than "max_age" old.
@@ -467,6 +468,7 @@ action clean => sub {
 action upkeep => sub {
     my ($action, $conffile) = @_;
     my $conf = LoadFile($conffile);
+    $OPT{apt_proxy} //= $$conf{apt_proxy};
     my @img = get_images($conf);
     my (@services, @rm_images, @rm_saves, %updated);
     for my $img (@img) {
@@ -653,12 +655,19 @@ sub prereq_updated($img, $prereqs) {
 }
 
 sub upgrade_needed($names) {
+    state $no_err = { capture_err => 1 };
     return 0 unless $names and @$names;
     my $doit = 0;
+    my $proxy_content = qq[Acquire::http::Proxy "$OPT{apt_proxy}";\n];
+    my $q_proxy_file = '"/etc/apt/apt.conf.d/90_apt-cacher_proxy"';
     for my $name (@$names) {
+        my @docker_sh_c = (docker => exec => -i => $name => sh => '-c');
         # Start an upgrade with assume-no. Look at output to see if it looks
         # like something needed updated.
-        my $rv = eval { safe_pipe { capture_err => 1 }, [ docker => exec => -i => $name => sh => -c => 'apt-get update && apt-get -u dist-upgrade --assume-no' ] } || "$@";
+        my $rv = eval {
+            safe_pipe $no_err, [ @docker_sh_c, "cat >$q_proxy_file" ], $proxy_content if $OPT{apt_proxy};
+            safe_pipe $no_err, [ @docker_sh_c, 'apt-get update && apt-get -u dist-upgrade --assume-no' ];
+        } || "$@";
         return 1 if $rv =~ /Do you want to continue/;
         # On error, either container doesn't exist or apt failed (or something
         # else). If the container isn't running, do the upgrade so that
@@ -672,7 +681,6 @@ sub upgrade_needed($names) {
             say STDERR "$@" if $@;
         }
     }
-    # We get here on unknown error or if the apt-get command reports no changes.
     return $doit;
 }
 
