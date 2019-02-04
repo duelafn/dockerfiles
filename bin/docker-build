@@ -190,8 +190,8 @@ sub do_as {
 #     }
 #   }
 
-  $! = 0; local $) = $gid; die "Can't set gid: $!" if 0+$!;
-  $! = 0; local $> = $uid; die "Can't set uid: $!" if 0+$!;
+  $! = 0; local $( = $gid; die "Can't set gid '$gid': $!" if 0+$!;
+  $! = 0; local $< = $uid; die "Can't set uid '$uid': $!" if 0+$!;
   $ENV{USER} = $user;
   $ENV{HOME} = $dir;
 
