@@ -13,6 +13,7 @@ our %OPT = (
 our @OPT_SPEC =
 qw/ help|h version noact|no-act|dry-run DEBUG quiet|q
     force_update|force-update!  apt_proxy|apt-proxy=s
+    only!
   /;
 sub USAGE { <<"__USAGE__" };
 usage: $_[0] [options] ACTION ARG(S)
@@ -23,13 +24,15 @@ ACTIONS
 
     Clean up uninteresting containers (exited) and images (dangling).
 
-  $_[0] upkeep CONFIG
+  $_[0] upkeep CONFIG  [IMAGE(S)]
 
        --force-update   force update all containers (like settings max_age to "0 days")
        --apt-proxy URL  set apt proxy for update checks
+       --only           upkeep named images only, do not follow dependencies
 
     For each configured image, rebuild if directory version is unavailable
-    or if image is of named version is more than "max_age" old.
+    or if image is of named version is more than "max_age" old. Limit
+    updates to named images if listed.
 
 
 OPTIONS
@@ -466,12 +469,13 @@ action clean => sub {
 };
 
 action upkeep => sub {
-    my ($action, $conffile) = @_;
+    my ($action, $conffile, @images) = @_;
     my $conf = LoadFile($conffile);
     $OPT{apt_proxy} //= $$conf{apt_proxy};
-    my @img = get_images($conf);
+    my @img = get_images($conf, @images);
     my (@services, @rm_images, @rm_saves, %updated);
     for my $img (@img) {
+        next if @images and $OPT{only} and !grep $_ eq $img->key, @images;
         push @rm_images, prune_revisions($img->rc, $img->prune) if $img->prune;
         push @rm_saves, $img->old_saves;
 
@@ -593,8 +597,9 @@ sub _get_images($conf, $key, $img, $all, $done) {
     return @rv;
 }
 
-sub get_images($conf) {
+sub get_images($conf, @images) {
     my (%image, %done);
+    @images = keys %{$$conf{images}} unless @images;
     for my $key (keys %{$$conf{images}}) {
         my %opt = (%$conf, %{$$conf{images}{$key}}, key => $key);
         $opt{push_remotes} = delete($opt{push}) if exists($opt{push});
@@ -604,9 +609,10 @@ sub get_images($conf) {
         }
         $image{$key} = Image->new(%opt);
     }
+    @images = sort(keys %image) unless @images;
     return map _get_images($conf, $_, $image{$_}, \%image, \%done), (
         grep CBool($image{$_}->build() // 'yes'),  # NOTE: "auto" is false
-        sort keys %image
+        @images
     );
 }
 
