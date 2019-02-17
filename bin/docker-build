@@ -645,7 +645,7 @@ sub load($file) {
     return say("Would load $file into docker") if $OPT{noact};
     SAY "load $file into docker";
     my $q_fname = qbash($file);
-    system "zstd --stdout $q_fname | docker load";
+    system "zstd -d --stdout $q_fname | docker load";
     return 1;
 }
 
