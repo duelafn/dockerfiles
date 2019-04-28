@@ -37,12 +37,12 @@ fi
 
 if ! [ -f "$ETC_DIR/puppet.conf" ]; then
     check_version
-    cp /etc/puppet/puppet.conf.dpkg-dist                "$ETC_DIR/puppet.conf"
-    sed -i "s/=\/var\/lib\/puppet/=\/opt\/puppet\/lib/" "$ETC_DIR/puppet.conf"
+    cp /etc/puppet/puppet.conf.dpkg-dist                   "$ETC_DIR/puppet.conf"
+    sed -i "s/=\s*\/var\/lib\/puppet/=\/opt\/puppet\/lib/" "$ETC_DIR/puppet.conf"
     # These went missing in puppet 4:
-    sed -i "s/^prerun_command/#prerun_command/"         "$ETC_DIR/puppet.conf"
-    sed -i "s/^postrun_command/#postrun_command/"       "$ETC_DIR/puppet.conf"
-    sed -i "s/=\/var\/log\/puppet/=\/opt\/puppet\/log/" "$ETC_DIR/puppet.conf"
+    sed -i "s/^prerun_command/#prerun_command/"            "$ETC_DIR/puppet.conf"
+    sed -i "s/^postrun_command/#postrun_command/"          "$ETC_DIR/puppet.conf"
+    sed -i "s/=\s*\/var\/log\/puppet/=\/opt\/puppet\/log/" "$ETC_DIR/puppet.conf"
 fi
 
 chown puppet:puppet "$ETC_DIR/config.ru"
