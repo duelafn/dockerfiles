@@ -436,7 +436,8 @@ package Image {
         my ($major, $keep);
         for my $f (main::rnatsort($self->list_files($dirname))) {
             next unless $f =~ /:r(\d+)/;
-            $major //= (my $M = $1);
+            my $M = $1;
+            $major //= $M;
             $keep = 0;
             $keep = 1 if $keep_time lt stat($f)->mtime;   # Too new, keep it
             $keep = 1 if $keep_history-- > 0;             # Keep minimum number
@@ -664,7 +665,7 @@ sub upgrade_needed($names) {
     state $no_err = { capture_err => 1 };
     return 0 unless $names and @$names;
     my $doit = 0;
-    my $proxy_content = qq[Acquire::http::Proxy "$OPT{apt_proxy}";\n];
+    my $proxy_content = $OPT{apt_proxy} ? qq[Acquire::http::Proxy "$OPT{apt_proxy}";\n] : '';
     my $q_proxy_file = '"/etc/apt/apt.conf.d/90_apt-cacher_proxy"';
     for my $name (@$names) {
         my @docker_sh_c = (docker => exec => -i => $name => sh => '-c');
