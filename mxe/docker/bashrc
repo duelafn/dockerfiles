@@ -1,0 +1,195 @@
+#!/bin/bash
+export HOME=/home/user
+
+# Emacs Tramp mode: just set a simple prompt
+[ "$TERM" == "dumb" ] && PS1='$ ' && return
+
+# If not running interactively, don't do anything
+[ -z "$PS1" ] && return
+
+export LESS="-R -F -i -M -X"
+export GZIP="--rsyncable"
+export XZ_DEFAULTS="-9 --memlimit-compress=75%"
+
+# LESSOPEN and LESSCLOSE
+if ( type lesspipe >/dev/null 2>&1 ); then
+  eval $(lesspipe)
+elif ( type lessfile >/dev/null 2>&1 ); then
+  eval $(lessfile)
+fi
+
+# LS_COLORS
+if ( type dircolors >/dev/null 2>&1 ); then
+  eval $(dircolors)
+  TMP_LS_COLORS="$LS_COLORS"
+  if [ -f ~/etc/dircolors ]; then
+      eval $(dircolors ~/etc/dircolors)
+      LS_COLORS="$TMP_LS_COLORS$LS_COLORS"
+  fi
+  if [ -f ~/.dircolors ]; then
+      eval $(dircolors ~/.dircolors)
+      LS_COLORS="$TMP_LS_COLORS$LS_COLORS"
+  fi
+fi;
+
+
+alias xyzzy='echo "Nothing happens"'
+alias mv='mv -i'
+alias cp='cp -i'
+alias ls='LC_COLLATE=C ls --group-directories-first'
+alias lsnc='LC_COLLATE=C ls --color=never'
+alias ldi='clear; di'
+alias lid=ldi
+alias di='ls -pql'
+alias die='ls -pqAl'
+alias dinc='ls -pql --color=never'
+rdi()  { find "$@" -type f | grep -ve '~$' | xargs -n 1 -d "\n" ls -pql | table_rows --max-cols 8 --justify rrrrrl; }
+lrdi() { clear; find "$@" -type f | grep -ve '~$' | xargs -n 1 -d "\n" ls -pql | table_rows --max-cols 8 --justify rrrrrl; }
+alias del='rm -rf'
+alias NORMAL='echo -e "\e[0m"'
+
+
+alias st='git status'
+alias ff='git diff HEAD'
+alias ffc='git diff --cached'
+alias ci='git commit'
+alias up='git pull'
+alias add="git add"
+alias branches='git branch'
+branch() {
+    if (test -z $1); then git branch | perl -ne'print if s/^\* //'; else git branch "$@" 2>/dev/null; git checkout $1; fi
+}
+ignore() {
+    for f in "$@"; do echo "$f" >> .git/info/exclude; done
+}
+
+alias GREP='egrep -r --color -I --exclude="*~" --exclude="*.bak"'
+
+alias man='LANG=en_US man'
+alias perldoc='LANG=en_US perldoc'
+
+alias search='apt-cache search'
+alias show='apt-cache show'
+alias agi='LESS="" sudo apt-get install'
+alias agr='sudo apt-get purge'
+
+alias pie='perl -p -i~ -e'
+
+# set variable identifying the chroot you work in (used in the prompt below)
+if [ -z "$debian_chroot" ] && [ -r /etc/debian_chroot ]; then
+    debian_chroot=$(cat /etc/debian_chroot)
+fi
+
+# Needed for __git_ps1
+GIT_PS1_SHOWDIRTYSTATE=1
+GIT_PS1_SHOWSTASHSTATE=1
+GIT_PS1_SHOWCOLORHINTS=1
+if [ -f /etc/bash_completion ]; then
+    . /etc/bash_completion
+elif [ -f /etc/bash_completion.d/git-prompt ]; then
+    . /etc/bash_completion.d/git-prompt
+elif [ -f /etc/bash_completion.d/git ]; then
+    . /etc/bash_completion.d/git
+fi
+
+if ( test "x$TERM" = "xscreen" -a "x$WINDOW" != "x" ); then
+    _FN=$(expr "$WINDOW" + 1)
+    _SCREEN_NAME=$(echo "$STY" | perl -pe's/^\d+\.//')
+    /bin/echo -ne "\e]2;$_SCREEN_NAME F$_FN (screen)\007"
+fi
+
+if [ "x$USER" = "xroot" ]; then
+    PROMPT_COLOR="\e[91m"
+    PROMPT_CHAR='#'
+    HOME=/root
+else
+    PROMPT_COLOR="\e[0m"
+    PROMPT_CHAR='$'
+fi
+
+PROMPT_CHROOT='${debian_chroot:+\[\e[36m\]($debian_chroot)\[\e[0m\]}'
+PROMPT_STANDARD="\[$PROMPT_COLOR\][\u@\h \W]"
+PROMPT_CMD_STATUS='\[\e[$(($? ? 31 : 0))m\]'
+if (type __git_ps1 >/dev/null 2>&1); then
+    PS1="$PROMPT_CHROOT$PROMPT_STANDARD\$(__git_ps1)$PROMPT_CMD_STATUS$PROMPT_CHAR\[\e[0m\] "
+else
+    PS1="$PROMPT_CHROOT$PROMPT_STANDARD$PROMPT_CMD_STATUS$PROMPT_CHAR\[\e[0m\] "
+fi;
+
+
+doc() {
+    if [ -d "/usr/share/doc/$1" ]; then
+        pushd "/usr/share/doc/$1"
+    else
+        pkg=$(dpkg -S "$1" | head -n1 | awk -F: '{print$1}')
+        if [ -d "/usr/share/doc/$1" ]; then
+            pushd "/usr/share/doc/$1"
+        else
+            echo "Can not find package $1 or package containing file $1"
+        fi
+    fi
+}
+
+
+### BASHISMS
+###=========
+shopt -s extglob
+HISTCONTROL="ignorespace:erasedups"
+
+alias ls='LC_COLLATE=C /bin/ls -v --color=auto'
+alias di='ls -hqBlv'
+alias dinc='ls -hqBlv --color=never'
+alias die='ls -hqABlv'
+alias tree='/usr/bin/tree -vC'
+alias TREE='/usr/bin/tree -vpshugDC'
+
+complete -a unalias alias
+complete -ac command type which
+complete -d cd
+complete -dfc man
+
+_complete_doc() {
+    local cur
+    COMPREPLY=()
+    cur=${COMP_WORDS[COMP_CWORD]}
+    COMPREPLY=( $(ls /usr/share/doc | grep "^$cur") );
+}
+complete -F _complete_doc doc
+
+_make() {
+    local cur
+    COMPREPLY=()
+    cur=${COMP_WORDS[COMP_CWORD]}
+    for f in $HOME/etc/Makefile.global Makefile $(awk '/^include /{print$2}' Makefile); do
+        COMPREPLY+=( $( awk -F':' '/^[a-zA-Z0-9][^$#\/\t=]*:([^=]|$)/ {split($1,A,/ /);for(i in A)print A[i]}' "$f" 2>/dev/null | command grep "^$cur" ))
+    done
+}
+complete -o default -F _make make
+
+_comp-dpkg-installed-packages() {
+    grep -A 2 -e "^Package: $1" /var/lib/dpkg/status | grep -B 2 'ok installed' | grep "Package: $1" | cut -d\  -f2
+}
+_dpkg_ins() { local cur; COMPREPLY=(); cur=${COMP_WORDS[COMP_CWORD]}; COMPREPLY=( $(_comp-dpkg-installed-packages $cur) );}
+complete -dfv -F _dpkg_ins -W 'install search update upgrade clean' apt-versions apt-cache apt-get agi agr agf
+
+
+### /Local/bin  Functions
+###======================
+rdeltwiddle() {
+    A=`find ${1:-.} \( -name "*~" -o -name "*.bak" \)`;
+    if [ "$A" != "" ]; then
+        find ${1:-.} \( -name "*~" -o -name "*.bak" \) | column -t -s $'\n';
+            read -p "Remove these files [n]? ";
+            if [[ $REPLY == [Yy] ]]; then
+                find ${1:-.} \( -name "*~" -o -name "*.bak" \) -exec rm {} \;;
+            fi;
+    fi;
+}
+
+#####################
+### LOCAL DEFINITIONS
+if (test -f "$HOME/.bashrc.local"); then
+    . "$HOME/.bashrc.local"
+fi
+### END LOCAL DEFINITIONS
+#########################

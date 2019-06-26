@@ -1,0 +1,20 @@
+#!/bin/bash
+VERSION='0.1.0';# Created: 2019-06-25
+set -o nounset     # Die if any variable is unset
+set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+
+VOLUME=/opt/mxe
+
+# Fix UID/GID if desired:
+perl -pi -E 's/^user:x:\K\d+:\d+:/$ENV{UID_USER}:$ENV{GID_USER}:/' /etc/passwd
+perl -pi -E 's/^user:x:\K\d+:/$ENV{GID_USER}:/' /etc/group
+
+cd /opt
+(ls -A mxe | grep -q .) || (git clone https://github.com/mxe/mxe.git && chown -R user:user /opt/mxe)
+cd /opt/mxe
+
+export HOME=/home/user
+export SHELL=/bin/bash
+# export PATH="/opt/mxe/usr/bin:$PATH"
+exec /usr/bin/perl -MPOSIX -e 'POSIX::setgid($ENV{GID_USER}); POSIX::setuid($ENV{UID_USER}); exec @ARGV' -- \
+     /bin/bash "$@"

@@ -1,0 +1,79 @@
+
+FROM debian:stretch
+MAINTAINER Dean Serenevy <dean@serenevy.net>
+
+# CONFIGURATION
+#--------------
+VOLUME ["/opt/mxe"]
+
+# BUILDING
+#---------
+INCLUDE ../_includes/00_prepare.docker
+
+ENV UID_USER 1000
+ENV GID_USER 1000
+
+INCLUDE ../_includes/05_localenv.docker
+INCLUDE? localenv.docker
+INCLUDE ../_includes/10_setup.docker
+
+# MAIN
+#-----
+RUN addgroup --gid $GID_USER user
+RUN adduser \
+    --home /home/user \
+    --shell /bin/bash \
+    --uid $UID_USER \
+    --gid $GID_USER \
+    --disabled-password \
+    --disabled-login \
+    user
+
+# package list from https://mxe.cc/#requirements-debian
+RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) -- \
+ apt-get install -y --no-install-recommends \
+    autoconf \
+    automake \
+    autopoint \
+    bash \
+    bison \
+    bzip2 \
+    flex \
+    g++ \
+    g++-multilib \
+    gettext \
+    git \
+    gperf \
+    intltool \
+    libc6-dev-i386 \
+    libgdk-pixbuf2.0-dev \
+    libltdl-dev \
+    libssl-dev \
+    libtool-bin \
+    libxml-parser-perl \
+    lzip \
+    make \
+    openssl \
+    p7zip-full \
+    patch \
+    perl \
+    pkg-config \
+    python \
+    ruby \
+    sed \
+    unzip \
+    wget \
+    xz-utils \
+ && rm -rf /var/lib/apt/lists/* /var/cache/apt /usr/share/doc/* /usr/share/man/man*/*'
+
+COPY docker/run /docker/run
+COPY docker/bashrc /home/user/.bashrc
+COPY docker/inputrc /home/user/.inputrc
+
+# CLEANUP
+#--------
+INCLUDE ../_includes/99_cleanup.docker
+
+# RUNNING
+#--------
+CMD exec /docker/run

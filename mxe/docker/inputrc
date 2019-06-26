@@ -1,0 +1,22 @@
+# See: http://tiswww.case.edu/php/chet/readline/readline.html#Sample Init File
+set revert-all-at-newline on
+set show-all-if-unmodified on
+set skip-completed-text on
+
+C-b: backward-kill-word
+C-f: kill-word
+
+"\C- ": set-mark
+"\M-w": kill-region
+"\ew": kill-region
+
+# xterm values:
+"\e[KC4~": backward-word
+"\e[KC6~": forward-word
+
+# konsole values:
+"\e[1;5D": backward-word
+"\e[1;5C": forward-word
+"\e[9;3~": backward-kill-word
+"\e[3;5~": kill-word
+"\e[9;2~": backward-delete-char

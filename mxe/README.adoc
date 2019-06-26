@@ -1,0 +1,18 @@
+
+== Volume Initialization
+
+Just run container.
+
+    docker run -it --rm -v /opt/mxe:/opt/mxe utgllc/mxe:latest
+
+
+== Volume Layout
+
+VOLUME: /opt/mxe
+
+This is the root of the mxe repo. If the folder is empty, the repo will be cloned.
+
+
+== Docker Scripts
+
+    docker run  ... /docker/run
