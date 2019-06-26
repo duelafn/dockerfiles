@@ -512,7 +512,7 @@ action upkeep => sub {
                 save($fname, $img->labels);
             }
             for my $remote (@{$img->push_remotes // []}) {
-                push_remotes($remote, $img->labels);
+                push_remotes($remote, [ $img->labels ], user => $img->build_user);
             }
         }
 
@@ -617,13 +617,19 @@ sub get_images($conf, @images) {
     );
 }
 
-sub push_remotes($remote, @repos) {
-    return say("Would push @repos to $remote") if $OPT{noact};
-    for my $repo (@repos) {
-        SAY "push $repo to $remote";
-        safe_pipe [ docker => tag => $repo => "$remote/$repo" ];
-        safe_pipe [ docker => push => "$remote/$repo" ];
-    }
+sub push_remotes($remote, $repos, %opt) {
+    my $user = delete($opt{user});
+    $user = undef unless 0 == $>;
+    return say("Would push @$repos to $remote", ($user ? " as $user" : "")) if $OPT{noact};
+    my $cb = sub {
+        for my $repo (@$repos) {
+            SAY "push $repo to $remote", ($user ? " as $user" : "");
+            safe_pipe [ docker => tag => $repo => "$remote/$repo" ];
+            safe_pipe [ docker => push => "$remote/$repo" ];
+        }
+    };
+    if ($user) { do_as($user, $cb); }
+    else       { $cb->(); }
 }
 
 sub pull($src, $dest=undef) {
