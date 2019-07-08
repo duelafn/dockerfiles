@@ -3,7 +3,7 @@
 
 Just run container.
 
-    docker run -it --rm -v /opt/mxe:/opt/mxe utgllc/mxe:latest
+    docker run -it --rm -v /opt/mxe:/opt/mxe -v /my/sources:/opt/src utgllc/mxe:latest
 
 
 == Volume Layout
