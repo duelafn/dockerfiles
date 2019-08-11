@@ -117,13 +117,13 @@ sub docker {
     my ($image, $cmd, %opt) = @_;
     my @docker = qw/ docker run -it --rm /;
 
-    push @docker, -e => "DISPLAY=$ENV{DISPLAY}", -v => "/tmp/.X11-unix:/tmp/.X11-unix" if $opt{x11};
-    push @docker, -w => $opt{workdir} if defined($opt{workdir});
+    push @docker, -e => "DISPLAY=$ENV{DISPLAY}", -e => "XDG_RUNTIME_DIR=/home/user/workdir", -v => "/tmp/.X11-unix:/tmp/.X11-unix" if $opt{x11};
 
     if (my $v = $opt{volumes}) {
         push @docker, -v => "$_:$$v{$_}" for keys %$v;
     }
 
+    push @docker, -w => $opt{workdir} if defined($opt{workdir});
     say "@docker $image @$cmd";
     system @docker, $image, @$cmd;
 }
