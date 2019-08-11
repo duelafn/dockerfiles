@@ -9,4 +9,10 @@ install -d -o root   -g root   "$ETC_DIR" "$ETC_DIR/tmp" "$ETC_DIR/public"
 install -d -o puppet -g puppet /opt/puppet/log /opt/puppet/lib/yaml /opt/puppet/lib/yaml/facts
 chown -R puppet:puppet "$ETC_DIR/config.ru" /opt/puppet/lib/yaml
 
+# Helpful message for upgrades
+if (grep -q 'codedir" << "/opt/puppet/code"' "$ETC_DIR/config.ru" && test -d /opt/puppet/environments && ! test -e /opt/puppet/code); then
+    echo "Puppet 5 expects 'environments' and 'modules' folders to be in a new 'code' subfolder"
+    exit 1
+fi
+
 exec /usr/sbin/apache2 -DFOREGROUND
