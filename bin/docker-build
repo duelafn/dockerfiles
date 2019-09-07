@@ -5,13 +5,14 @@ use strict; use warnings; use 5.020;
 
 use Getopt::Long qw/:config bundling/;
 use Hash::Util qw/ lock_keys /;
-our $VERSION = '1.0.0';# Created: 2018-12-11
+our $VERSION = '1.1.0';# Created: 2018-12-11
 
 our %OPT = (
     force_update => 0,
+    verbose => 1
 );
 our @OPT_SPEC =
-qw/ help|h version noact|no-act|dry-run DEBUG quiet|q
+qw/ help|h version noact|no-act|dry-run quiet|q+ verbose|v+
     force_update|force-update!  apt_proxy|apt-proxy=s
     only!
   /;
@@ -40,7 +41,9 @@ OPTIONS
  --no-act,
  --dry-run           don't change files, just list what would be done
 
- --DEBUG             print additional information while running
+ --quiet, -q         decrease verbocity
+ --verbose, -v       increase verbocity
+
  --help, -h          this usage message
  --version           show script version
 
@@ -91,11 +94,13 @@ __USAGE__
 #-----------------------------------------------------------------
 # BEGIN             Dean::Util code version 1.082
 #
-#  use Dean::Util qw/ BOLD parse_date safe_pipe do_as cat trim qbash /;
+#  use Dean::Util qw/ BOLD RED parse_date safe_pipe do_as cat trim qbash /;
 
 use Carp;
 #BEGIN: BOLD, 1 line
 sub BOLD($) { my $x = shift; (defined $x and $x ne '') ? "\e[1m".$x."\e[22m" : '' }
+#BEGIN: RED, 1 line
+sub RED($) { my $x = shift; (defined $x and $x ne '') ? "\e[31m".$x."\e[39m" : '' }
 #BEGIN: parse_date
 sub parse_date {
   require Date::Manip;
@@ -185,15 +190,6 @@ sub do_as {
   die unless defined($uid) and defined($gid);
   local %ENV = %ENV;
 
-#   for (`pgrep -u "$user" startkde`) {
-#     next unless /^(\d+)$/;
-#     next unless my $file = `cat "/proc/$1/environ"`;
-#     for (split /\0/, $file) {
-#       next unless /^(\w+)=(.*)$/;
-#       $ENV{$1} = $2;
-#     }
-#   }
-
   $! = 0; local $( = $gid; die "Can't set gid '$gid': $!" if 0+$!;
   $! = 0; local $< = $uid; die "Can't set uid '$uid': $!" if 0+$!;
   $ENV{USER} = $user;
@@ -266,9 +262,11 @@ subtype 'StringArray' => as 'ArrayRef[Str]';
 coerce 'StringArray'  => from 'Str' => via { [ $_ ] };
 use experimental 'signatures';
 
-sub SAY {
-    say BOLD join "", @_ unless $OPT{quiet};
-}
+sub INFO  { say join "", @_ if $OPT{verbose} >= 2; }
+sub WARN  { say BOLD(join "", @_) if $OPT{verbose} >= 1; }
+sub SAY   { say BOLD(join "", @_) if $OPT{verbose} >= 1; }
+sub ERROR { say STDERR BOLD(RED(join "", "ERROR: ", @_)) if $OPT{verbose} >= 0; }
+
 
 package Image {
     use Moose;
@@ -481,10 +479,14 @@ action upkeep => sub {
         push @rm_saves, $img->old_saves;
 
         # Skip updating image if newer than requested horizon
-        my $force = $OPT{force_update} || prereq_updated($img, \%updated);
-        if (!$force and $img->created) {
+        my $force;
+        if ($OPT{force_update}) {
+            $force = "--force-update option";
+        } elsif (prereq_updated($img, \%updated)) {
+            $force = "prerequisite updated";
+        } elsif ($img->created) {
             my $horizon = parse_date(($img->max_age() || "3 days") . " ago")->ymd;
-            next if $img->created ge $horizon;
+            $force = "older than max_age" if $img->created gt $horizon;
         }
 
         if ($img->pull) {
@@ -502,10 +504,15 @@ action upkeep => sub {
         }
 
         elsif ($img->builddir) {
-            if ($force || upgrade_needed($img->check_upgrade)) {
+            $force = "upgrade needed" unless $force and not upgrade_needed($img->check_upgrade);
+            if ($force) {
+                INFO "Rebuilding @{[ $img->key ]}, $force";
                 make($img->builddir, "force-upgrade", user => $img->build_user);
                 $updated{$img->key} = 1;
-            } else { next }
+            } else {
+                INFO "@{[ $img->key ]} is up to date";
+                next; # no save or push
+            }
             if ($img->save) {
                 my $fname = $img->save;
                 $fname = $img->basename($img->save, localtime->ymd, ".tar") if -d $fname;
@@ -542,7 +549,7 @@ sub bump_services(@services) {
     for (@services) {
         if (s/:SLEEP\s*//) {
             if ($OPT{noact}) { say "Would sleep $_ seconds" }
-            else { SAY "sleep $_ seconds"; sleep $_ }
+            else { INFO "sleep $_ seconds"; sleep $_ }
         }
 
         elsif (s/:MSG\s*//) {
@@ -554,7 +561,7 @@ sub bump_services(@services) {
             if (not $seen{$_} and systemctl_status($_) eq 'active') {
                 $seen{$_} = 1;
                 if ($OPT{noact}) { say "Would reload '$_'" }
-                else { SAY "reload '$_'"; system systemctl => '--no-pager', reload => $_ }
+                else { INFO "reload '$_'"; system systemctl => '--no-pager', reload => $_ }
             }
         }
 
@@ -562,7 +569,7 @@ sub bump_services(@services) {
             if (($seen{$_}||0) < 2 and systemctl_status($_) eq 'active') {
                 $seen{$_} = 2;
                 if ($OPT{noact}) { say "Would restart '$_'" }
-                else { SAY "restart '$_'"; system systemctl => '--no-pager', restart => $_ }
+                else { INFO "restart '$_'"; system systemctl => '--no-pager', restart => $_ }
             }
         }
     }
@@ -623,7 +630,7 @@ sub push_remotes($remote, $repos, %opt) {
     return say("Would push @$repos to $remote", ($user ? " as $user" : "")) if $OPT{noact};
     my $cb = sub {
         for my $repo (@$repos) {
-            SAY "push $repo to $remote", ($user ? " as $user" : "");
+            INFO "push $repo to $remote", ($user ? " as $user" : "");
             safe_pipe [ docker => tag => $repo => "$remote/$repo" ];
             safe_pipe [ docker => push => "$remote/$repo" ];
         }
@@ -634,7 +641,7 @@ sub push_remotes($remote, $repos, %opt) {
 
 sub pull($src, $dest=undef) {
     return say("Would pull '$src'", (($dest and $dest ne $src) ? " and tag as $dest" :"")) if $OPT{noact};
-    SAY "Pull '$src'", (($dest and $dest ne $src) ? " and tag as $dest" :"");
+    INFO "Pull '$src'", (($dest and $dest ne $src) ? " and tag as $dest" :"");
     return 0 if safe_pipe([ docker => pull => $src ]) =~ /Status: Image is up to date/;
     safe_pipe [ docker => tag  => $src => $dest ] if $dest and $dest ne $src;
     return 1;
@@ -643,7 +650,7 @@ sub pull($src, $dest=undef) {
 # docker save -o ubuntu.tar ubuntu:lucid ubuntu:saucy
 sub save($path, @repo) {
     return say("Would save @repo to $path") if $OPT{noact};
-    SAY "save @repo to $path";
+    INFO "save @repo to $path";
     my (undef, $dir, $fname) = splitpath($path);
     make_path($dir);
     my $q_docker = join " ", docker => save => map qbash($_), @repo;
@@ -656,7 +663,7 @@ sub save($path, @repo) {
 #    Loaded image: fedora:20
 sub load($file) {
     return say("Would load $file into docker") if $OPT{noact};
-    SAY "load $file into docker";
+    INFO "load $file into docker";
     my $q_fname = qbash($file);
     system "zstd -d --stdout $q_fname | docker load";
     return 1;
@@ -691,7 +698,7 @@ sub upgrade_needed($names) {
             $doit = 1;
         } else {
             # If the command failed, we'd like to be able to see why.
-            say STDERR "$@" if $@;
+            ERROR("While testing if upgrade needed (@$names): $@") if $@;
         }
     }
     return $doit;
@@ -701,7 +708,7 @@ sub make($dir, $target, %opt) {
     my $user = delete($opt{user});
     $user = undef unless 0 == $>;
     return say("Would make $target in $dir", ($user ? " as $user" : "")) if $OPT{noact};
-    SAY "Make $target in $dir", ($user ? " as $user" : "");
+    INFO "Make $target in $dir", ($user ? " as $user" : "");
     return do_as($user, sub { make($dir, $target, %opt) }) if $user;
     safe_pipe [ make => -C => $dir, $target, @{$opt{env} || []} ];
 }
@@ -709,7 +716,7 @@ sub make($dir, $target, %opt) {
 sub remove_containers {
     return unless @_;
     return say "Would remove containers: @_" if $OPT{noact};
-    SAY "Remove containers: @_";
+    WARN "Remove containers: @_";
     0 == system docker => rm  => @_;
 }
 
@@ -721,7 +728,7 @@ sub remove_images {
     return unless @_;
     my $images = join "", (@_ > 2) ? map("\n  - $_", @_) : "@_";
     return say("Would remove images: $images") if $OPT{noact};
-    SAY "Remove images: $images";
+    WARN "Remove images: $images";
     0 == system docker => rmi => @_;
 }
 
@@ -729,7 +736,7 @@ sub remove_saves {
     return unless @_;
     my $saves = join "", (@_ > 2) ? map("\n  - $_", @_) : "@_";
     return say("Would remove saves: $saves") if $OPT{noact};
-    SAY "Remove saves: $saves";
+    WARN "Remove saves: $saves";
     unlink @_;
 }
 
@@ -828,6 +835,8 @@ sub call_action {
 sub get_options {
     my $OPT = shift;
     GetOptions $OPT, @_ or usage(1);
+    $$OPT{verbose} ||= 0;
+    $$OPT{verbose} -= ($$OPT{quiet} || 0);
     usage() if $$OPT{help} || $$OPT{version};
     lock_keys(%$OPT, keys %$OPT, map /^(\w+)/, @_);
 }
