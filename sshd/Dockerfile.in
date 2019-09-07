@@ -1,13 +1,6 @@
 
-## This is a release builder, launch it, then once it is finished
-## export/import the result to get a fixed object.
-
-FROM debian:jessie
+FROM debian:buster
 MAINTAINER Dean Serenevy <dean@serenevy.net>
-
-# jessie moved to archive.debian.org, containers not updated
-RUN sed -i '/jessie-updates/d' /etc/apt/sources.list ; \
-    sed -i 's/deb.debian.org/archive.debian.org/' /etc/apt/sources.list
 
 
 # CONFIGURATION
@@ -34,7 +27,7 @@ RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) --
      ssh    \
  && apt-get clean'
 
-RUN zcat /usr/share/doc/rsync/scripts/rrsync.gz >/usr/local/bin/rrsync && chmod 755 /usr/local/bin/rrsync && cp -a /usr/local/bin/rrsync /usr/bin/rrsync
+RUN cp /usr/share/doc/rsync/scripts/rrsync /usr/local/bin/rrsync && chmod 755 /usr/local/bin/rrsync && cp -a /usr/local/bin/rrsync /usr/bin/rrsync
 
 RUN  mkdir -p /var/run/sshd
 COPY docker /docker
