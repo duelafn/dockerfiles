@@ -56,6 +56,8 @@ CONFIG
   pull_others: 1            # pull referenced but unspecified images from docker hub
   save: /cache/foo          # docker save to .tar.zst in this folder
   max_age: "2 weeks"        # force rebuild if older than this even if unchanged
+  check_upgrade: 1          # do apt update and explicitly check for out of date packages
+  apt_proxy: "http://localhost:3142/"  # used only for check_upgrade
   prune:
     major:   1
     history: 3
@@ -66,22 +68,30 @@ CONFIG
     keep:   "3 months"
 
   images:
-    # Too old, don't bother updating
     "debian:wheezy":
-      pull: 0
+      pull: auto          # Pull if missing,
+      build: auto         #    but only if needed as prerequisite
+    "debian:jessie":
+      pull: auto          # Pull if missing (needed or not)
+    "debian:stretch":
+      pull: 1             # Keep up to date,
+      build: auto         #    but only if needed as prerequisite
 
-    "utgllc/samba:latest":
-      pull: "files.machinemotion.com:2276/utgllc/samba:latest"
+    "duelafn/samba:latest":
+      pull: "docker.example.com:2276/duelafn/samba:latest"
+
+    "docker.example.com:2276/duelafn/samba": {} # No build info, but will prune old versions
 
     "duelafn/postgres":
       load: /cache/foo         # load file name or latest (natural-sort) in directory
 
     "utgllc/timeclock":
       path: timeclock
-      depends: "utgllc/mariadb"
-      push: "files.machinemotion.com:2276"
+      depends: "duelafn/mariadb"
+      push: "docker.example.com:2276"
+      check_upgrade: tclock    # exec update checks in running container with this name
 
-    "utgllc/mariadb":
+    "duelafn/mariadb":
       path: mariadb
       services:
         - docker-syncthing     # restart service
@@ -279,23 +289,24 @@ package Image {
         $self->parse_key;
     }
 
-    has "id",            (is => 'rw', isa => 'Str');
-    has "key",           (is => 'rw', isa => 'Str', required => 1);
-    has "repository",    (is => 'rw', isa => 'Str', lazy_build => 1);
-    has "container",     (is => 'rw', isa => 'Str', lazy_build => 1);
-    has "tag",           (is => 'rw', isa => 'Str', lazy_build => 1);
+    has "id",            (is => 'rw', isa => 'Str');                   # 75a93f36b986...
+    has "key",           (is => 'rw', isa => 'Str', required => 1);    # foo/bar/baz:bob
+    has "repository",    (is => 'rw', isa => 'Str', lazy_build => 1);  # foo/bar
+    has "container",     (is => 'rw', isa => 'Str', lazy_build => 1);  # baz
+    has "tag",           (is => 'rw', isa => 'Str', lazy_build => 1);  # bob
     sub _build_repository($self) { $self->parse_key->{repository} }
     sub _build_container($self) { $self->parse_key->{container} }
     sub _build_tag($self) { $self->parse_key->{tag} }
     sub parse_key($self, $key=undef) {
         $key //= $self->key;
-        my ($a, $b) = split /:/, $key;
+        my ($a, $b) = ($key, '');
+        $b = $1 if $a =~ s/:([\w][\w.-]{0,127})$//;
         my @path = split /\//, $a;
         my $c = pop @path;
         my $rv = {
             repository => join("/", @path),
             container  => $c,
-            tag => ($b// 'latest'),
+            tag => ($b // 'latest'),
         };
         $self->repository($$rv{repository});
         $self->container($$rv{container});
@@ -303,7 +314,7 @@ package Image {
         return $rv;
     }
 
-    sub rc($self) {
+    sub rc($self) {  # foo/bar/baz
         return $self->container unless $self->repository;
         return $self->repository() . "/" . $self->container;
     }
@@ -354,6 +365,7 @@ package Image {
     sub add_warning($self, @msg) { push @{$self->warnings}, "@msg"; }
     sub show_warnings($self) { say "WARNING: $_" for @{$self->warnings} }
 
+    has "apt_proxy",     (is => 'rw', isa => 'Str');
     has "build",         (is => 'rw', isa => 'Str', default => 'yes');
     has "build_user",    (is => 'rw', isa => 'Str');
     has "check_upgrade", (is => 'rw', isa => 'StringArray', coerce => 1);
@@ -363,7 +375,7 @@ package Image {
     has "path",          (is => 'rw', isa => 'Str');
     has "prune",         (is => 'rw', isa => 'HashRef');
     has "prune_saves",   (is => 'rw', isa => 'HashRef');
-    has "pull",          (is => 'rw', isa => 'Str');
+    has "pull",          (is => 'rw', isa => 'Str', default => '');
     has "pull_others",   (is => 'rw', isa => 'Bool');
     has "push_remotes",  (is => 'rw', isa => 'StringArray', coerce => 1);
     has "save",          (is => 'rw', isa => 'Str');
@@ -470,7 +482,7 @@ action clean => sub {
 action upkeep => sub {
     my ($action, $conffile, @images) = @_;
     my $conf = LoadFile($conffile);
-    $OPT{apt_proxy} //= $$conf{apt_proxy};
+    $$conf{apt_proxy} = $OPT{apt_proxy} if defined($OPT{apt_proxy});
     my @img = get_images($conf, @images);
     my (@services, @rm_images, @rm_saves, %updated);
     for my $img (@img) {
@@ -486,11 +498,13 @@ action upkeep => sub {
             $force = "prerequisite updated";
         } elsif ($img->created) {
             my $horizon = parse_date(($img->max_age() || "3 days") . " ago")->ymd;
-            $force = "older than max_age" if $img->created gt $horizon;
+            $force = "older than max_age" if $img->created lt $horizon;
         }
 
         if ($img->pull) {
-            if (is_bool($img->pull)) {
+            if ('auto' eq $img->pull) {
+                $updated{$img->key} = pull($img->key) unless $img->created;
+            } elsif (is_bool($img->pull)) {
                 $updated{$img->key} = pull($img->key) if CBool($img->pull)
             } else {
                 $updated{$img->key} = pull($img->pull, $img->key)
@@ -504,7 +518,7 @@ action upkeep => sub {
         }
 
         elsif ($img->builddir) {
-            $force = "upgrade needed" unless $force and not upgrade_needed($img->check_upgrade);
+            $force = "upgrade needed" unless $force or not upgrade_needed($img, $img->check_upgrade);
             if ($force) {
                 INFO "Rebuilding @{[ $img->key ]}, $force";
                 make($img->builddir, "force-upgrade", user => $img->build_user);
@@ -674,34 +688,48 @@ sub prereq_updated($img, $prereqs) {
     return 0;
 }
 
-sub upgrade_needed($names) {
+sub upgrade_needed($img, $names) {
     state $no_err = { capture_err => 1 };
     return 0 unless $names and @$names;
     my $doit = 0;
-    my $proxy_content = $OPT{apt_proxy} ? qq[Acquire::http::Proxy "$OPT{apt_proxy}";\n] : '';
+    my $q_proxy_content = $img->apt_proxy() ? qbash(qq[Acquire::http::Proxy "@{[ $img->apt_proxy ]}";]) : '';
     my $q_proxy_file = '"/etc/apt/apt.conf.d/90_apt-cacher_proxy"';
-    for my $name (@$names) {
-        my @docker_sh_c = (docker => exec => -i => $name => sh => '-c');
+    for (@$names) {
+        my $name = $_; # un-alias it
+        my @docker_sh_c;
+        if (is_bool($name)) {
+            $name = $img->key;
+            @docker_sh_c = (docker => run => -i => '--rm' => $img->key => sh => '-c');
+        } else {
+            @docker_sh_c = (docker => exec => -i => $name => sh => '-c');
+        }
+
         # Start an upgrade with assume-no. Look at output to see if it looks
         # like something needed updated.
-        my $rv = eval {
-            safe_pipe $no_err, [ @docker_sh_c, "cat >$q_proxy_file" ], $proxy_content if $OPT{apt_proxy};
-            safe_pipe $no_err, [ @docker_sh_c, 'apt-get update && apt-get -u dist-upgrade --assume-no' ];
-        } || "$@";
-        return 1 if $rv =~ /Do you want to continue/;
+        my @cmds;
+        push @cmds, "echo $q_proxy_content >$q_proxy_file" if $q_proxy_content;
+        push @cmds, "apt-get update && apt-get -u dist-upgrade --assume-no";
+        my $rv = eval { safe_pipe $no_err, [ @docker_sh_c, join "; ", @cmds ] } || "$@";
+        if ($rv =~ /Do you want to continue/) {
+            INFO "$name has packages that need updated";
+            return 1;
+        }
         # On error, either container doesn't exist or apt failed (or something
         # else). If the container isn't running, do the upgrade so that
         # upgrades happen even for containers that only run sometimes. Don't
         # try to upgrade for any other error -- assume the error would prevent
         # the upgrade from succeeding anyway.
         if ($rv =~ /No such container/) {
-            $doit = 1;
+            $doit = "$name container is not running, assume upgrade needed";
+        } elsif ($rv =~ /13: Permission denied/) {
+            $doit = "$name container does not run as root, assume upgrade needed";
         } else {
             # If the command failed, we'd like to be able to see why.
-            ERROR("While testing if upgrade needed (@$names): $@") if $@;
+            ERROR("While testing if upgrade needed ($name): $@") if $@;
         }
     }
-    return $doit;
+    INFO $doit if not is_bool($doit);
+    return ($doit ? 1 : 0);
 }
 
 sub make($dir, $target, %opt) {
