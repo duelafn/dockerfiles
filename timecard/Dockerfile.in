@@ -1,6 +1,6 @@
 
-# php7.0
-FROM debian:stretch
+# php7.3
+FROM debian:buster
 MAINTAINER Dean Serenevy <dean@serenevy.net>
 
 
@@ -37,20 +37,19 @@ RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) --
     ghostscript \
     imagemagick \
     libapache2-mod-php \
-    php7.0-mysql \
-    ssmtp \
- && apt-get clean'
+    php-mysql \
+    msmtp \
+ && apt-get clean \
+ && rm -rf /usr/share/doc/* /usr/share/man/man*/*'
 
 
-# apache
-RUN rm -f /etc/apache2/sites-enabled/000-default.conf
-RUN ln -s /opt/timeclock/etc/site.conf /etc/apache2/sites-enabled/timeclock.conf
+RUN \
+ rm -f /etc/apache2/sites-enabled/000-default.conf && \
+ ln -s /opt/timeclock/etc/site.conf /etc/apache2/sites-enabled/timeclock.conf && \
+ sed -i '/^;\?date\.timezone/cdate.timezone = "'$TIME_ZONE'"'   /etc/php/7.3/apache2/php.ini && \
+ sed -i '/^;\?sendmail_path/csendmail_path = /usr/bin/msmtp -t' /etc/php/7.3/apache2/php.ini && \
+ ln -s /opt/timeclock/etc/msmtprc /etc/msmtprc
 
-# php
-RUN sed -i '/^;\?date\.timezone/cdate.timezone = "'$TIME_ZONE'"' /etc/php/7.0/apache2/php.ini
-
-# ssmtp
-RUN sed -i '/^#\?FromLineOverride/cFromLineOverride=YES' /etc/ssmtp/ssmtp.conf
 
 COPY docker /docker
 

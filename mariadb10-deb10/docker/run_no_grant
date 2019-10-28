@@ -1,0 +1,25 @@
+#!/bin/bash
+VERSION='0.1.0';# Created: 2015-05-20
+set -o nounset     # Die if any variable is unset
+set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+
+VOLUME=/opt/mariadb
+
+DATA_DIR="$VOLUME/data"
+CONF_DIR="$VOLUME/etc"
+SOCKET_DIR="$VOLUME/socket"
+SOCKET="$SOCKET_DIR/mysqld.sock"
+
+MYSQLARGS=(
+    --datadir="$DATA_DIR"
+    --port=3306
+    --bind-address=0.0.0.0
+    --innodb-file-per-table
+    --default-storage-engine=InnoDB
+    --socket="$SOCKET"
+)
+
+install -d -o mysql -g root  /var/run/mysqld "$DATA_DIR" "$SOCKET_DIR"
+install -d -o root  -g root  "$CONF_DIR"
+
+exec /usr/bin/mysqld_safe --skip-grant-tables "${MYSQLARGS[@]}"

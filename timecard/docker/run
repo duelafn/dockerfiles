@@ -5,16 +5,21 @@ set -o errexit     # set +e; COMMAND; set -e to temporarily disable
 VOLUME=/opt/timeclock
 
 ETC_DIR=$VOLUME/etc
+[ -d "$ETC_DIR" ] || install -d -o root -g root "$ETC_DIR"
 
 # ssmtp needs updated host name:
 hname=`hostname`
-[ -z "$hname"   ] || sed -i "/^#\\?hostname/chostname=$hname" /etc/ssmtp/ssmtp.conf
-[ -z "$MAILHUB" ] || sed -i "/^#\\?mailhub/cmailhub=$MAILHUB" /etc/ssmtp/ssmtp.conf
+[ -f "$ETC_DIR/msmtprc" ] || cat <<EOF > "$ETC_DIR/msmtprc"
+account default
+host $MAILHUB
+auto_from on
+maildomain $hname
+domain $hname
+EOF
 
 set -o nounset     # Die if any variable is unset
 
 # create directories
-[ -d "$ETC_DIR" ] || install -d -o root -g root "$ETC_DIR"
 [ -d "$APACHE_LOG_DIR" ]  || install -d -o root -g root "$APACHE_LOG_DIR"
 [ -d "$APACHE_RUN_DIR"  ] || install -d -o root -g root "$APACHE_RUN_DIR"
 [ -d "$APACHE_LOCK_DIR" ] || install -d -o root -g root "$APACHE_LOCK_DIR"
