@@ -44,6 +44,7 @@ RUN adduser --system        \
     --gid $GID_PUPPET       \
     --disabled-password     \
     --disabled-login        \
+    --gecos '' \
     puppet
 
 RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) -- \
