@@ -5,7 +5,7 @@ Volume Initialization
 VOLUME: /opt/puppet
 
 First time run with a new host name, new volume, or upon changing the
-ssldir:
+ssldir or SSL options (e.g., ca_ttl):
 
     docker run --rm                   \
         -h puppet.machinemotion.com   \
