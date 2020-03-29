@@ -1,5 +1,5 @@
 
-FROM debian:stretch
+FROM debian:buster
 MAINTAINER Dean Serenevy <dean@serenevy.net>
 
 
@@ -29,6 +29,7 @@ RUN adduser                 \
     --gid $GID_SYNCTHING    \
     --disabled-password     \
     --disabled-login        \
+    --gecos '' \
     syncthing
 
 RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) -- \
