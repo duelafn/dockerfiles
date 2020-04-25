@@ -23,7 +23,6 @@ RUN dpkg-divert --local --rename --add /usr/bin/ischroot
 RUN ln -sf /bin/true /usr/bin/ischroot
 
 RUN \
-    echo apt-transport-https >> /tmp/apt.install; \
     echo ca-certificates     >> /tmp/apt.install; \
     echo less                >> /tmp/apt.install; \
     echo locales             >> /tmp/apt.install
