@@ -503,6 +503,8 @@ action upkeep => sub {
         } elsif ($img->created) {
             my $horizon = parse_date(($img->max_age() || "3 days") . " ago")->ymd;
             $force = "older than max_age" if $img->created lt $horizon;
+        } elsif (!$img->created) {
+            $force = "new image";
         }
 
         if ($img->pull) {
