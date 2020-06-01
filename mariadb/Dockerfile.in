@@ -7,7 +7,9 @@ MAINTAINER Dean Serenevy <dean@serenevy.net>
 
 # jessie moved to archive.debian.org, containers not updated
 RUN sed -i '/jessie-updates/d' /etc/apt/sources.list ; \
-    sed -i 's/deb.debian.org/archive.debian.org/' /etc/apt/sources.list
+    sed -i 's/deb.debian.org/archive.debian.org/' /etc/apt/sources.list; \
+    echo 'Acquire::Check-Valid-Until "false";' >/etc/apt/apt.conf.d/90_archive_expired_key; \
+    echo 'APT::Get::AllowUnauthenticated "true";' >>/etc/apt/apt.conf.d/90_archive_expired_key
 
 
 # CONFIGURATION
