@@ -17,7 +17,7 @@ hname=`hostname`
 # apache configuration
 install -d -o root -g root "$ETC_DIR" "$LOG_DIR"
 
-[ -d "$SRC_DIR" ] || git clone https://github.com/osTicket/osTicket-1.8.git "$SRC_DIR"
+[ -d "$SRC_DIR" ] || git clone https://github.com/osTicket/osTicket.git "$SRC_DIR"
 [ -d "$WWW_DIR" ] || (
     pushd "$SRC_DIR"
     php setup/cli/manage.php deploy --setup "$WWW_DIR"

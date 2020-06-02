@@ -6,7 +6,7 @@ set -o errexit     # set +e; COMMAND; set -e to temporarily disable
 SRC_DIR=/opt/osticket/src
 WWW_DIR=/opt/osticket/www
 
-[ -d "$SRC_DIR" ] || git clone https://github.com/osTicket/osTicket-1.8.git "$SRC_DIR"
+[ -d "$SRC_DIR" ] || git clone https://github.com/osTicket/osTicket.git "$SRC_DIR"
 
 cd "$SRC_DIR"
 php setup/cli/manage.php deploy -v "$WWW_DIR"

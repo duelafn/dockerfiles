@@ -5,7 +5,7 @@ Volume Initialization
 Set up sources in /srv/osticket/www either from tarball or from git clone:
 
     cd /opt/osticket
-    git clone https://github.com/osTicket/osTicket-1.8 src
+    git clone https://github.com/osTicket/osTicket src
 
     docker run -it --rm --hostname ticket.machinemotion.com --name osticket osticket bash
     cd /opt/osticket/src
