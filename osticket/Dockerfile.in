@@ -27,16 +27,16 @@ ENV APACHE_LOG_DIR       /var/log/apache2
 ENV APACHE_PID_FILE      /var/run/apache2.pid
 ENV APACHE_RUN_DIR       /var/run/apache2
 ENV APACHE_LOCK_DIR      /var/lock/apache2
-# ENV APACHE_SERVERADMIN   dean@serenevy.net
-# ENV APACHE_SERVERNAME    tickets
-# ENV APACHE_SERVERALIAS   tickets.machinemotion.com
+ENV APACHE_SERVERADMIN   someone@example.com
+ENV APACHE_SERVERNAME    tickets
+ENV APACHE_SERVERALIAS   tickets.example.com
 ENV APACHE_DOCUMENTROOT  /var/www
-# ENV MAILHUB              172.17.42.1
+ENV MAILHUB              127.0.0.1
 
 INCLUDE ../_includes/05_localenv.docker
 
 # Need to set env variables (those which are commented above) in this file:
-INCLUDE localenv.docker
+INCLUDE? localenv.docker
 
 INCLUDE ../_includes/10_setup.docker
 
