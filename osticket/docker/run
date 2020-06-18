@@ -15,7 +15,8 @@ hname=`hostname`
 [ -z "$MAILHUB" ] || sed -i "/^#\\?mailhub/cmailhub=$MAILHUB" /etc/ssmtp/ssmtp.conf
 
 # apache configuration
-install -d -o root -g root "$ETC_DIR" "$LOG_DIR"
+[ -d "$ETC_DIR" ] || mkdir -p "$ETC_DIR"
+[ -d "$LOG_DIR" ] || mkdir -p "$LOG_DIR"
 
 [ -d "$SRC_DIR" ] || git clone https://github.com/osTicket/osTicket.git "$SRC_DIR"
 [ -d "$WWW_DIR" ] || (
@@ -26,9 +27,9 @@ install -d -o root -g root "$ETC_DIR" "$LOG_DIR"
 
 [ -f "$ETC_DIR/apache.conf" ] || cat <<EOF > "$ETC_DIR/apache.conf"
 <VirtualHost *:80>
-    ServerAdmin dean@serenevy.net
-    ServerName ticket.machinemotion.com
-    ServerAlias www.ticket.machinemotion.com
+    ServerAdmin somebody@example.com
+    ServerName ticket.example.com
+    ServerAlias www.ticket.example.com
 
     CustomLog $LOG_DIR/access.log combined
     ErrorLog  $LOG_DIR/error.log
@@ -38,13 +39,10 @@ install -d -o root -g root "$ETC_DIR" "$LOG_DIR"
         Options Indexes FollowSymLinks
         AllowOverride None
         Require all granted
-        Order allow,deny
-        Allow from all
     </Directory>
 
     <Directory "$WWW_DIR/include">
-        Order Deny,Allow
-        Deny from all
+        Require all denied
     </Directory>
 
     RedirectMatch 404 /\.git
