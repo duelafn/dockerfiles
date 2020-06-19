@@ -1,21 +1,10 @@
 
-## This is a release builder, launch it, then once it is finished
-## export/import the result to get a fixed object.
-
-FROM debian:jessie
+FROM debian:stretch
 MAINTAINER Dean Serenevy <dean@serenevy.net>
-
-# jessie moved to archive.debian.org, containers not updated
-RUN sed -i '/jessie-updates/d' /etc/apt/sources.list ; \
-    sed -i 's/deb.debian.org/archive.debian.org/' /etc/apt/sources.list; \
-    echo 'Acquire::Check-Valid-Until "false";' >/etc/apt/apt.conf.d/90_archive_expired_key; \
-    echo 'APT::Get::AllowUnauthenticated "true";' >>/etc/apt/apt.conf.d/90_archive_expired_key
-
 
 # CONFIGURATION
 #--------------
 VOLUME ["/opt/osticket"]
-
 
 # BUILDING
 #---------
@@ -35,7 +24,7 @@ ENV MAILHUB              127.0.0.1
 
 INCLUDE ../_includes/05_localenv.docker
 
-# Need to set env variables (those which are commented above) in this file:
+# Need to set env variables in this file:
 INCLUDE? localenv.docker
 
 INCLUDE ../_includes/10_setup.docker
@@ -47,19 +36,19 @@ RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) --
  apt-get install -y --no-install-recommends \
     apache2              \
     git                  \
-    libapache2-mod-php5  \
-    php-gettext          \
-    php5-apcu            \
-    php5-gd              \
-    php5-imap            \
-    php5-json            \
-    php5-mysql           \
+    libapache2-mod-php   \
+    php-apcu             \
+    php-gd               \
+    php-imap             \
+    php-json             \
+    php-mysql            \
+    php-php-gettext      \
     ssmtp                \
  && apt-get clean'
 
 RUN rm -f /etc/apache2/sites-enabled/000-default.conf
 RUN ln -s /opt/osticket/etc/apache.conf /etc/apache2/sites-enabled/osticket.conf
-RUN sed -i '/^;\?date\.timezone/cdate.timezone = "'$TIME_ZONE'"' /etc/php5/apache2/php.ini
+RUN sed -i '/^;\?date\.timezone/cdate.timezone = "'$TIME_ZONE'"' /etc/php/7.0/apache2/php.ini
 RUN sed -i '/^#\?FromLineOverride/cFromLineOverride=YES' /etc/ssmtp/ssmtp.conf
 
 COPY docker /docker
