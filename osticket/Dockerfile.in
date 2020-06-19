@@ -1,5 +1,5 @@
 
-FROM debian:stretch
+FROM debian:buster
 MAINTAINER Dean Serenevy <dean@serenevy.net>
 
 # CONFIGURATION
@@ -37,21 +37,22 @@ RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) --
     apache2              \
     git                  \
     libapache2-mod-php   \
+    msmtp                \
     php-apcu             \
     php-gd               \
     php-imap             \
     php-json             \
     php-mysql            \
     php-php-gettext      \
-    ssmtp                \
  && apt-get clean'
 
 RUN rm -f /etc/apache2/sites-enabled/000-default.conf
 RUN ln -s /opt/osticket/etc/apache.conf /etc/apache2/sites-enabled/osticket.conf
-RUN sed -i '/^;\?date\.timezone/cdate.timezone = "'$TIME_ZONE'"' /etc/php/7.0/apache2/php.ini
-RUN sed -i '/^#\?FromLineOverride/cFromLineOverride=YES' /etc/ssmtp/ssmtp.conf
+RUN sed -i '/^;\?date\.timezone/cdate.timezone = "'$TIME_ZONE'"' /etc/php/7.3/apache2/php.ini
+RUN rm -f /usr/sbin/sendmail ; ln -s /usr/bin/msmtp /usr/sbin/sendmail
 
 COPY docker /docker
+RUN  mv /docker/msmtprc /etc/msmtprc
 
 
 # CLEANUP
