@@ -41,9 +41,11 @@ RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) --
     php-apcu             \
     php-gd               \
     php-imap             \
+    php-intl             \
     php-json             \
     php-mysql            \
     php-php-gettext      \
+    php-zip              \
  && apt-get clean'
 
 RUN rm -f /etc/apache2/sites-enabled/000-default.conf
