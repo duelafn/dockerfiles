@@ -7,11 +7,17 @@ machines. I run a `Dcokerfile.in` through a simple perl script so that I
 can include common components (apt proxy, standard packages, common
 cleanup).
 
+You alomost certainly want to fork this repository or just copy/paste bits
+into your own dockerfiles. I am making no efforts at sane upgrades, I am
+inconsistent with naming and versioning (sometimes just upgrading
+containers and sometimes creating new containers with -debXX appended).
+
 The `bin` directory includes some scripts to link include files from
 another folder (for "vendorization") and scripts to automatically manage
 updates and cleanup of old versions. The intent is to periodically (and
-automatically) call `upgrade_all` to ensure security updates are regularly
-applied.
+automatically) call `docker-build` to ensure security updates are regularly
+applied to containers.
+
 
 == Volumes
 
@@ -21,9 +27,9 @@ plain directory volumes rather than use storage containers, so that is what
 all the samples use. Feel free to use storage containers if you like.
 
 
-== Creating New Machines
+== Project Structure
 
-Directory Template:
+Typical Directory Structure:
 
     Dockerfile.in
     Makefile
@@ -32,24 +38,16 @@ Directory Template:
     ├── init
     ├── reload
     ├── run
-    ├── stop
-    └── upgrade
+    └── stop
 
-Nothing is just a simple copy/paste, most everything needs revised for a
-new project.
+Most `Dockerfile.in` end with `CMD exec /docker/run` and the docker
+commands `reload` and `stop` are perform actions appropriate for the
+corresponding systemd commands.
 
-Most `Dockerfile.in` should end with `CMD exec /docker/run` and the docker
-commands `reload` and `stop` are highly recommended and should perform
-actions appropriate for the corresponding systemd commands.
-
-Most initialization should occur automatically in `/docker/run`, including
-initialization of reasonable config files (if absent) and creation of any
+I try to make `/docker/run` perform initialization as needed, including
+initialization of reasonable config files when absent and creation of any
 required directories. The intent is to simply run the container on an empty
 directory for initial setup and just run the container on a configured
-directory for normal use. `/docker/init` script should only be used if
-there is initialization which requires user interaction or otherwise is not
-safe to test for on each startup.
-
-The `/docker/upgrade` script should be able to upgrade the data storage to
-the most recent (or otherwise specially tagged) version. It does not
-upgrade the container itself, that would be silly.
+directory for normal use. Occasionally, something will ened a bit more
+setup and will have a `/docker/init` script as well. Each directory's
+README will explain the required setup procedure.
