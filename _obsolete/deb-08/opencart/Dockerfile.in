@@ -51,7 +51,7 @@ RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) --
 
 RUN rm -f /etc/apache2/sites-enabled/000-default.conf
 RUN ln -s /opt/opencart/etc/apache.conf /etc/apache2/sites-enabled/opencart.conf
-RUN sed -i '/^;\?date\.timezone/cdate.timezone = "'$TIME_ZONE'"' /etc/php5/apache2/php.ini
+RUN sed -i '/^;\?date\.timezone/cdate.timezone = "'$TZ'"' /etc/php5/apache2/php.ini
 RUN sed -i '/^#\?FromLineOverride/cFromLineOverride=YES' /etc/ssmtp/ssmtp.conf
 
 RUN a2enmod rewrite
