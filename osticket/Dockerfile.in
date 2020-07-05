@@ -20,7 +20,7 @@ ENV APACHE_SERVERADMIN   someone@example.com
 ENV APACHE_SERVERNAME    tickets
 ENV APACHE_SERVERALIAS   tickets.example.com
 ENV APACHE_DOCUMENTROOT  /var/www
-ENV MAILHUB              127.0.0.1
+ENV MAILHUB              host-auto
 
 INCLUDE ../_includes/05_localenv.docker
 

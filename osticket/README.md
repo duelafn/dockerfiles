@@ -27,7 +27,7 @@ Set up Database:
 Launch osticket instance:
 
     docker run -it --rm --hostname ticket.machinemotion.com --name osticket --link osticket-data:osticket-data \
-        -e MAILHUB=172.17.42.1 -p 127.0.0.1:3280:80 -v /srv/osticket:/opt/osticket osticket
+        -p 127.0.0.1:3280:80 -v /srv/osticket:/opt/osticket osticket
 
 Visit: http://ticket.machinemotion.com/ to run the setup script.
 

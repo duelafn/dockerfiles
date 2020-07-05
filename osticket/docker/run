@@ -12,7 +12,11 @@ WWW_DIR=/opt/osticket/www
 # ssmtp needs updated host name:
 hname=`hostname`
 [ -z "$hname"   ] || sed -i "/^maildomain /cmaildomain $hname" /etc/msmtprc
-[ -z "$MAILHUB" ] || sed -i "/^host /chost $MAILHUB" /etc/msmtprc
+if [[ "${MAILHUB:-x}" == "host-auto" ]]; then
+    sed -i "/^host /chost $(ip route|awk '/default/ { print $3 }')" /etc/msmtprc
+else
+    [ -z "$MAILHUB" ] || sed -i "/^host /chost $MAILHUB" /etc/msmtprc
+fi
 
 # apache configuration
 [ -d "$ETC_DIR" ] || mkdir -p "$ETC_DIR"
