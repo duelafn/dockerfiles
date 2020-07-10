@@ -2,6 +2,7 @@
 DOCKER_INCLUDES=$(wildcard *.docker)
 GLOBAL_INCLUDES=$(wildcard ../_includes/*)
 DOCKER_FORCE=$(shell  (docker version | grep -q 'API version: 1.1') && echo '-f')
+TAG ?= latest
 
 .PHONY: build check-name
 .PHONY: bump_revision commit
@@ -12,22 +13,22 @@ Dockerfile: Dockerfile.in ${GLOBAL_INCLUDES} ${LOCALENV} ${DOCKER_INCLUDES}
 	perl -MFile::Slurp -ne 'print /^INCLUDE(\??)\s+(.*)/ ? read_file("$$2", err_mode => ($$1 ? "quiet" : "croak")) : $$_' $< >$@
 
 build: Dockerfile
-	docker build --rm -t ${CONTAINER} .
+	docker build --rm -t ${CONTAINER}:${TAG} .
 	docker images | perl -ne'print if 1==$$. or m#${CONTAINER}#'
 
 release: build revision update
-	docker tag ${DOCKER_FORCE} ${CONTAINER} ${REPOSITORY}:latest
-	docker tag ${DOCKER_FORCE} ${CONTAINER} ${REPOSITORY}:r$$(cat revision).$$(cat update)
+	docker tag ${DOCKER_FORCE} ${CONTAINER}:${TAG} ${REPOSITORY}:${TAG}
+	docker tag ${DOCKER_FORCE} ${CONTAINER}:${TAG} ${REPOSITORY}:r$$(cat revision).$$(cat update)
 	docker images | perl -ne'print if 1==$$. or m#${REPOSITORY}#'
 
 commit: bump_revision
 	$(MAKE) release
 
 push: check-remote revision update
-	docker tag ${DOCKER_FORCE} ${CONTAINER} ${REMOTE}/${REPOSITORY}:r$$(cat revision).$$(cat update)
-	docker tag ${DOCKER_FORCE} ${CONTAINER} ${REMOTE}/${REPOSITORY}:latest
+	docker tag ${DOCKER_FORCE} ${CONTAINER}:${TAG} ${REMOTE}/${REPOSITORY}:r$$(cat revision).$$(cat update)
+	docker tag ${DOCKER_FORCE} ${CONTAINER}:${TAG} ${REMOTE}/${REPOSITORY}:${TAG}
 	docker push ${REMOTE}/${REPOSITORY}:r$$(cat revision).$$(cat update)
-	docker push ${REMOTE}/${REPOSITORY}:latest
+	docker push ${REMOTE}/${REPOSITORY}:${TAG}
 
 upgrade: check-name
 	docker exec -it ${NAME} sh -c 'apt-get update && apt-get -u dist-upgrade --assume-no' | grep -q 'Do you want to continue'
@@ -35,9 +36,9 @@ upgrade: check-name
 
 force-upgrade: Dockerfile revision
 	$(MAKE) bump_update
-	docker build -q --rm --no-cache=true -t ${CONTAINER} .
-	docker tag ${DOCKER_FORCE} ${CONTAINER} ${REPOSITORY}:latest
-	docker tag ${DOCKER_FORCE} ${CONTAINER} ${REPOSITORY}:r$$(cat revision).$$(cat update)
+	docker build -q --rm --no-cache=true -t ${CONTAINER}:${TAG} .
+	docker tag ${DOCKER_FORCE} ${CONTAINER}:${TAG} ${REPOSITORY}:${TAG}
+	docker tag ${DOCKER_FORCE} ${CONTAINER}:${TAG} ${REPOSITORY}:r$$(cat revision).$$(cat update)
 	docker images | perl -ne'print if 1==$$. or m#\Q${REPOSITORY}\E#'
 
 check-name:
