@@ -1,0 +1,26 @@
+
+# Keep in mind that the starman volume is mounted at /www
+# regardless of where you keep your files on the docker server.
+
+# By default we do not maintain any access logs, instead expecting that
+# they will be kept by the reverse proxy. If you are using this as a
+# front-end server, you may want to set this option
+#
+#access-log /www/log/access.log
+
+# Default error log, once working, you can save disk space by sending to /dev/null
+error-log  /www/log/error.log
+
+# listen: Specifies the TCP address, ports and UNIX domain sockets to bind
+# to wait for requests. You can repeat as many times as you want and mix
+# TCP and UNIX domain sockets.
+#
+# For TCP sockets you can append :ssl after the port to specify that
+# connections on that port should use SSL. Note that the SSL support is
+# experimental and hasn't been widely tested.
+#
+listen :5000
+listen /www/run/starman.sock
+
+# How many workers to start
+workers 5

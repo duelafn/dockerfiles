@@ -1,0 +1,87 @@
+#!/usr/bin/perl -w
+# Copyright (C) 2016  Dean Serenevy
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+use strict; use warnings; use 5.020;
+
+use Carp;
+use Getopt::Long qw/:config bundling/;
+use Hash::Util qw/ lock_keys /;
+our $VERSION = '0.1.0';# Created: 2016-01-09
+
+our %OPT = (  );
+our @OPT_SPEC =
+qw/ help|h version noact|no-act|dry-run DEBUG
+  /;
+sub USAGE { <<"__USAGE__" };
+usage: $_[0] [options]
+__USAGE__
+
+get_options( \%OPT, @OPT_SPEC );
+MAIN(\%OPT, @ARGV);
+
+sub MAIN {
+    my ($opt, @conf) = @_;
+    my %o;
+    for my $file (@conf) {
+        next unless open my $F, "<", $file;
+        for (<$F>) {
+            next if /^\s*#/ or !/\S/;
+            s/^\s+//; s/\s+$//;
+            my ($opt, $val) = split /\s+/, $_, 2;
+            if ($opt =~ s/^!//) {
+                delete $o{$opt};
+            } else {
+                push @{$o{$opt}}, $val;
+            }
+        }
+    }
+
+    delete $o{qw/ D daemonize /};# Not allowed!
+    exec starman => build_options(%o);
+}
+
+sub build_options {
+    my %o = @_;
+    my @o;
+    while (my ($key, $arr) = each %o) {
+        my $opt = (1 == length($key)) ? "-$key" : "--$key";
+        for my $val (@$arr) {
+            push @o, $opt;
+            push @o, $val if defined($val);
+        }
+    }
+    return @o;
+}
+
+sub get_options {
+    my $OPT = shift;
+    GetOptions $OPT, @_ or usage(1);
+    usage() if $$OPT{help} || $$OPT{version};
+    lock_keys(%$OPT, keys %$OPT, map /^(\w+)/, @_);
+}
+
+sub usage {
+    my $status = (@_ && $_[0] =~ /^\d+$/) ? shift(@_) : 0+@_;
+    print @_, "\n" if @_;
+    require File::Spec; my $exe = (File::Spec->splitpath($0))[2];
+    $OPT{$_} = $OPT{$_} ? "enabled" : "disabled" for map /^(\w+).*!/, @OPT_SPEC;
+    print $OPT{version} ? "$exe version $VERSION\n" : USAGE($exe);
+    exit $status;
+}

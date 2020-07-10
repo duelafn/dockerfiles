@@ -1,0 +1,36 @@
+#!/bin/bash
+VERSION='0.1.0';# Created: 2016-01-09
+set -o nounset     # Die if any variable is unset
+set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+
+VOLUME=/www
+
+# Fix UID/GID if desired:
+perl -pi -E 's/^www-data:x:\K\d+:\d+:/$ENV{UID_USER}:$ENV{GID_USER}:/' /etc/passwd
+perl -pi -E 's/^www-data:x:\K\d+:/$ENV{GID_USER}:/' /etc/group
+
+mkdir -p  "$VOLUME/etc" "$VOLUME/log" "$VOLUME/run" /tmp/ledgersmb
+chown www-data:www-data "$VOLUME/log" "$VOLUME/run" /tmp/ledgersmb
+
+# ssmtp needs updated host name:
+hname=`hostname`
+[ -z "$hname"   ] || sed -i "/^maildomain /cmaildomain $hname" /etc/msmtprc
+if [[ "${MAILHUB:-x}" == "host-auto" ]]; then
+    sed -i "/^host /chost $(ip route|awk '/default/ { print $3 }')" /etc/msmtprc
+else
+    [ -z "$MAILHUB" ] || sed -i "/^host /chost $MAILHUB" /etc/msmtprc
+fi
+
+[ -e "$VOLUME/etc/starman.conf" ]|| cp /docker/starman.conf.example "$VOLUME/etc/starman.conf"
+[ -e "$VOLUME/etc/ledgersmb.conf" ] || cp /docker/ledgersmb.conf "$VOLUME/etc/ledgersmb.conf"
+[ -e "$VOLUME/templates" ] || cp -r /srv/ledgersmb/templates.orig "$VOLUME/templates"
+chown -R www-data:www-data "$VOLUME/templates"
+
+
+export LSMB_CONFIG_FILE="$VOLUME/etc/ledgersmb.conf"
+
+export HOME=/srv/ledgersmb
+export SHELL=/bin/bash
+cd /srv/ledgersmb
+exec /usr/bin/perl -MPOSIX -e 'POSIX::setgid($ENV{GID_USER}); POSIX::setuid($ENV{UID_USER}); exec @ARGV' -- \
+     /docker/starman /docker/starman.conf "$VOLUME/etc/starman.conf"
