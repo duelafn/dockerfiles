@@ -1,0 +1,61 @@
+
+FROM debian:buster
+MAINTAINER Dean Serenevy <dean@serenevy.net>
+
+# CONFIGURATION
+#--------------
+VOLUME ["/opt/postgresql"]
+
+# BUILDING
+#---------
+INCLUDE ../_includes/00_prepare.docker
+
+ENV UID_POSTGRES 202
+ENV GID_POSTGRES 202
+
+INCLUDE ../_includes/05_localenv.docker
+INCLUDE ../_includes/10_setup.docker
+
+# MAIN
+#-----
+RUN groupadd -g $GID_POSTGRES postgres
+RUN useradd --system                         \
+    --home /opt/postgresql                   \
+    --shell /bin/sh                          \
+    -M                                       \
+    --uid $UID_POSTGRES                      \
+    --gid $GID_POSTGRES                      \
+    --comment "PostgreSQL administrator,,,"  \
+    postgres
+
+RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) -- \
+ apt-get install -y --no-install-recommends \
+ postgresql \
+ sudo \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/* /usr/share/doc/* /usr/share/man/*'
+
+RUN install -d -m 2775 -o postgres -g postgres /var/run/postgresql
+
+RUN rm -rf /var/lib/postgresql
+
+RUN PG_ETC="$(find /etc/postgresql -maxdepth 1 -mindepth 1 -type d | tail -n1)"; mv $PG_ETC /etc/postgresql/tmpl; ln -s /opt/postgresql/conf $PG_ETC
+
+RUN sed -i "/^#*stats_temp_directory[ =]/cstats_temp_directory = '/var/run/postgresql/stat_tmp'"  /etc/postgresql/tmpl/main/postgresql.conf
+RUN sed -i "/^#*listen_addresses[ =]/clisten_addresses = '*'"                                     /etc/postgresql/tmpl/main/postgresql.conf
+RUN sed -i "/^data_directory[ =]/cdata_directory = '<%VOLUME%>/data'"                             /etc/postgresql/tmpl/main/postgresql.conf
+RUN sed -i "/^ssl[ =]/cssl = false"                                                               /etc/postgresql/tmpl/main/postgresql.conf
+RUN perl -pi -e "s#/etc/ssl#<%VOLUME%>/conf/ssl#"                                                 /etc/postgresql/tmpl/main/postgresql.conf
+RUN perl -pi -e "s#/etc/postgresql/[\d.]+/#<%VOLUME%>/conf/#"                                     /etc/postgresql/tmpl/main/postgresql.conf
+
+COPY docker /docker
+
+# CLEANUP
+#--------
+INCLUDE ../_includes/99_cleanup.docker
+
+# RUNNING
+#--------
+EXPOSE 5432
+
+CMD exec /docker/run
