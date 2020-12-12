@@ -1,6 +1,7 @@
 
 CONTAINER=apache2-cgi
 REPOSITORY=duelafn/${CONTAINER}
+TAG=deb8
 
 LOCALENV=../_includes/05_localenv.docker
 

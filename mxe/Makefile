@@ -1,6 +1,7 @@
 
 CONTAINER=mxe
 REPOSITORY=utgllc/${CONTAINER}
+TAG=deb10
 
 LOCALENV=../_includes/05_localenv.docker
 

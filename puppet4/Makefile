@@ -1,6 +1,7 @@
 
 CONTAINER=puppetmaster4
 REPOSITORY=cmminc/${CONTAINER}
+TAG=deb9
 
 LOCALENV=../_includes/05_localenv.docker
 
