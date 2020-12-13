@@ -1,0 +1,22 @@
+#!/bin/bash
+VERSION='0.1.0';# Created: 2020-07-15
+set -o nounset     # Die if any variable is unset
+set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+
+VOLUME=/opt/isso
+
+# Fix UID/GID if desired:
+perl -pi -E 's/^isso:x:\K\d+:\d+:/$ENV{UID_ISSO}:$ENV{GID_ISSO}:/' /etc/passwd
+perl -pi -E 's/^isso:x:\K\d+:/$ENV{GID_ISSO}:/' /etc/group
+
+# add "dockerhost" to /etc/hosts for reasonable smtp defaults
+echo "$(ip route|awk '/default/ { print $3 }')   dockerhost" >>/etc/hosts
+
+mkdir -p "$VOLUME/etc"
+[ -e "$VOLUME/etc/isso.cfg" ] || cp /docker/isso.cfg "$VOLUME/etc/isso.cfg"
+
+install -d -o isso -g isso /opt/isso/data
+[ ! -e /opt/isso/data/comments.sqlite3 ] || chown isso:isso /opt/isso/data/comments.sqlite3
+
+exec /usr/bin/perl -MPOSIX -e 'POSIX::setgid($ENV{GID_ISSO}); POSIX::setuid($ENV{UID_ISSO}); exec @ARGV' -- \
+     /usr/bin/dumb-init /usr/bin/isso -c "$VOLUME/etc/isso.cfg" run

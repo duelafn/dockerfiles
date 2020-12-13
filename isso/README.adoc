@@ -1,0 +1,20 @@
+
+== Volume Initialization
+
+Just run container.
+
+    docker run --rm -h test.example.com -v /srv/isso:/opt/isso -p 127.0.0.1:8000:8000 --name isso duelafn/isso:deb10
+
+Creates a skeleton etc/isso.cfg in the colume directory on first run.
+Modify that configuration and restart the container.
+
+
+== Volume Layout
+
+VOLUME: /opt/isso
+
+
+== Docker Scripts
+
+    docker run  ... /docker/run
+    docker exec ... /docker/stop

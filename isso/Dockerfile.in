@@ -1,0 +1,51 @@
+
+FROM debian:buster
+MAINTAINER Dean Serenevy <dean@serenevy.net>
+
+# CONFIGURATION
+#--------------
+VOLUME ["/opt/isso"]
+
+# BUILDING
+#---------
+INCLUDE ../_includes/00_prepare.docker
+
+ENV UID_ISSO 944
+ENV GID_ISSO 944
+
+INCLUDE ../_includes/05_localenv.docker
+INCLUDE? localenv.docker
+INCLUDE ../_includes/10_setup.docker
+
+# MAIN
+#-----
+RUN addgroup --gid $GID_ISSO isso
+RUN adduser --system \
+    --home /opt/isso \
+    --shell /bin/false \
+    --no-create-home \
+    --uid $UID_ISSO \
+    --gid $GID_ISSO \
+    --disabled-password \
+    --disabled-login \
+    isso
+
+RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) -- \
+ apt-get install -y --no-install-recommends \
+    dumb-init \
+    python3-gevent \
+    isso \
+ && rm -rf /var/lib/apt/lists/* /var/cache/apt /usr/share/doc/* /usr/share/man/man*/*'
+
+COPY docker /docker
+
+
+# CLEANUP
+#--------
+INCLUDE ../_includes/99_cleanup.docker
+
+# RUNNING
+#--------
+EXPOSE 8000
+
+CMD exec /docker/run
