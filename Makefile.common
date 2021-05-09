@@ -16,10 +16,9 @@ build: Dockerfile
 	docker build --rm -t ${CONTAINER}:${TAG} .
 	docker images | perl -ne'print if 1==$$. or m#${CONTAINER}#'
 
+# NOTE: Do NOT tag with :latest when TAG is defined (e.g., :deb10), :latest
+#       is too dangerous in that case (no guaranteed build order)
 release: build revision update
-ifneq "${TAG}" "latest"
-	docker tag ${DOCKER_FORCE} ${CONTAINER}:${TAG} ${REPOSITORY}:latest
-endif
 	docker tag ${DOCKER_FORCE} ${CONTAINER}:${TAG} ${REPOSITORY}:${TAG}
 	docker tag ${DOCKER_FORCE} ${CONTAINER}:${TAG} ${REPOSITORY}:r$$(cat revision).$$(cat update)
 	docker images | perl -ne'print if 1==$$. or m#${REPOSITORY}#'
@@ -30,14 +29,8 @@ commit: bump_revision
 push: check-remote revision update
 	docker tag ${DOCKER_FORCE} ${CONTAINER}:${TAG} ${REMOTE}/${REPOSITORY}:r$$(cat revision).$$(cat update)
 	docker tag ${DOCKER_FORCE} ${CONTAINER}:${TAG} ${REMOTE}/${REPOSITORY}:${TAG}
-ifneq "${TAG}" "latest"
-	docker tag ${DOCKER_FORCE} ${CONTAINER}:${TAG} ${REMOTE}/${REPOSITORY}:latest
-endif
 	docker push ${REMOTE}/${REPOSITORY}:r$$(cat revision).$$(cat update)
 	docker push ${REMOTE}/${REPOSITORY}:${TAG}
-ifneq "${TAG}" "latest"
-	docker push ${REMOTE}/${REPOSITORY}:latest
-endif
 
 upgrade: check-name
 	docker exec -it ${NAME} sh -c 'apt-get update && apt-get -u dist-upgrade --assume-no' | grep -q 'Do you want to continue'
@@ -46,9 +39,6 @@ upgrade: check-name
 force-upgrade: Dockerfile revision
 	$(MAKE) bump_update
 	docker build -q --rm --no-cache=true -t ${CONTAINER}:${TAG} .
-ifneq "${TAG}" "latest"
-	docker tag ${DOCKER_FORCE} ${CONTAINER}:${TAG} ${REPOSITORY}:latest
-endif
 	docker tag ${DOCKER_FORCE} ${CONTAINER}:${TAG} ${REPOSITORY}:${TAG}
 	docker tag ${DOCKER_FORCE} ${CONTAINER}:${TAG} ${REPOSITORY}:r$$(cat revision).$$(cat update)
 	docker images | perl -ne'print if 1==$$. or m#\Q${REPOSITORY}\E#'
