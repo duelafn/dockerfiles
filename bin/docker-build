@@ -60,10 +60,12 @@ CONFIG
   apt_proxy: "http://localhost:3142/"  # used only for check_upgrade
   prune:
     major:   1
+    minor:   2
     history: 3
     keep:   "2 weeks"
   prune_saves:
     major:   3
+    minor:   2
     history: 3
     keep:   "3 months"
 
@@ -445,6 +447,7 @@ package Image {
         my $dirname = $self->save;
         return unless -d $dirname;
         my $keep_major   = $$conf{major}   || 1;
+        my $keep_minor   = $$conf{minor}   || 1;
         my $keep_history = $$conf{history} || 1;
         my $keep_time    = main::parse_date(($$conf{keep} || "1 day") . ' ago')->epoch;
         my ($major, $keep);
@@ -455,8 +458,12 @@ package Image {
             $keep = 0;
             $keep = 1 if $keep_time lt stat($f)->mtime;   # Too new, keep it
             $keep = 1 if $keep_history-- > 0;             # Keep minimum number
+            $keep = 1 if $keep_minor-- > 0;               # Keep minimum number or minor versions
             if ($M != $major) {
-                $keep = 1 if --$keep_major > 0;           # Keep minimum number of major versions
+                if (--$keep_major > 0) {
+                    $keep = 1;                            # Keep minimum number of major versions
+                    $keep_minor = $$conf{minor} || 1;     # reset minor counter
+                }
                 $major = $M;
             }
             push @files, $f unless $keep;
@@ -792,6 +799,7 @@ sub prune_revisions($repo, $conf) {
     state $key_length = %$running ? length((keys %$running)[0]) : 0;
 
     my $keep_major   = $$conf{major}   || 1;
+    my $keep_minor   = $$conf{minor}   || 1;
     my $keep_history = $$conf{history} || 1;
     my $keep_time    = parse_date(($$conf{keep} || "1 day") . ' ago');
 
@@ -808,8 +816,12 @@ sub prune_revisions($repo, $conf) {
         $keep = 1 if $$running{substr($$img{Id}, 0, $key_length)};  # Currently running! keep it
         $keep = 1 if $$img{created_dt} gt $keep_time;               # Too new, keep it
         $keep = 1 if $keep_history-- > 0;                           # Keep minimum number
+        $keep = 1 if $keep_minor-- > 0;                             # Keep minimum number or minor versions
         if ($M != $major) {
-            $keep = 1 if --$keep_major > 0;                         # Keep minimum number of major versions
+            if (--$keep_major > 0) {
+                $keep = 1;                                          # Keep minimum number of major versions
+                $keep_minor = $$conf{minor} || 1;                   # reset minor counter
+            }
             $major = $M;
         }
 
