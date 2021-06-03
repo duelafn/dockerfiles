@@ -1,5 +1,5 @@
 
-FROM debian:buster
+FROM debian:bullseye
 MAINTAINER Dean Serenevy <dean@serenevy.net>
 
 
@@ -26,8 +26,6 @@ RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) --
      rsync  \
      ssh    \
  && apt-get clean'
-
-RUN cp /usr/share/doc/rsync/scripts/rrsync /usr/local/bin/rrsync && chmod 755 /usr/local/bin/rrsync && cp -a /usr/local/bin/rrsync /usr/bin/rrsync
 
 RUN  mkdir -p /var/run/sshd
 COPY docker /docker

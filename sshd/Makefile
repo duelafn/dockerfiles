@@ -1,7 +1,7 @@
 
 CONTAINER=sshd
 REPOSITORY=cmminc/${CONTAINER}
-TAG=deb10
+TAG=deb11
 
 LOCALENV=../_includes/05_localenv.docker
 
