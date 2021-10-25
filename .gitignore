@@ -1,4 +1,3 @@
-/*/update
 
 /upgrade.conf
 
@@ -7,3 +6,4 @@ Dockerfile
 localenv.docker
 postinstall.docker
 sample.service
+update
