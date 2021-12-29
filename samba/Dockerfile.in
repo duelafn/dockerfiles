@@ -1,5 +1,5 @@
 
-FROM debian:buster
+FROM debian:bullseye
 MAINTAINER Dean Serenevy <dean@serenevy.net>
 
 
