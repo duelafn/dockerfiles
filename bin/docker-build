@@ -5,7 +5,7 @@ use strict; use warnings; use 5.020;
 
 use Getopt::Long qw/:config bundling/;
 use Hash::Util qw/ lock_keys /;
-our $VERSION = '1.2.0';# Created: 2018-12-11
+our $VERSION = '1.3.0';# Created: 2018-12-11
 
 our %OPT = (
     force_update => 0,
@@ -104,7 +104,7 @@ CONFIG
         - ":SLEEP 10"
         - ":MSG ..."           # print message
         - ":RELOAD my-service" # reload service
-      tags: [ "<VERISION>", "latest" ]   # default
+      tags: [ "<VERISION>", "<MAKETAG>" ]   # default
 __USAGE__
 
 #-----------------------------------------------------------------
@@ -341,13 +341,21 @@ package Image {
         for (@{$self->tags // []}) {
             if ($_ eq '<VERSION>') {
                 push @lab, "$r:r" . $self->version;
+            } elsif ($_ eq '<MAKETAG>') {
+                my $makefile = scalar main::cat($self->builddir() . "/Makefile");
+                if ($makefile =~ /^TAG\s*=\s*(\S+)$/m) {
+                    push @lab, "$r:$1";
+                } else {
+                    push @lab, "$r:latest";
+                }
             } elsif (/</) {
                 die "Unknown tags directive: '$_'";
             } else {
                 push @lab, "$r:$_";
             }
         }
-        return @lab;
+        my %seen;
+        return grep { !($seen{$_}++) } @lab;
     }
 
     sub created($self) { ($self->inspect_info || {})->{Created} // '' }
@@ -387,7 +395,7 @@ package Image {
     has "save",          (is => 'rw', isa => 'Str');
     has "search_path",   (is => 'rw', isa => 'StringArray', coerce => 1);
     has "services",      (is => 'rw', isa => 'StringArray', coerce => 1);
-    has "tags",          (is => 'rw', isa => 'StringArray', coerce => 1, default => sub{[ "<VERSION>", "latest" ]});
+    has "tags",          (is => 'rw', isa => 'StringArray', coerce => 1, default => sub{[ "<VERSION>", "<MAKETAG>" ]});
 
     has "from",          (is => 'rw', isa => 'Str', lazy_build => 1);
     sub _build_from($self) {
