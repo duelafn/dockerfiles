@@ -28,6 +28,8 @@ if ! [ -d "$VOLUME/log" ]; then
 fi
 
 [ -f "$VOLUME/log/syncthing.log" ] && chown syncthing "$VOLUME/log/syncthing.log"
+perl -E '$log=pop; if(((-s $log)||0)>1e7){ for(3,2,1){rename"$log.$_","$log.".($_+1)} rename$log,"$log.1"}' "$VOLUME/log/syncthing.log"
+
 
 # Go!
 # ---
