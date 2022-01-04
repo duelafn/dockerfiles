@@ -5,7 +5,7 @@ use strict; use warnings; use 5.020;
 
 use Getopt::Long qw/:config bundling/;
 use Hash::Util qw/ lock_keys /;
-our $VERSION = '1.3.0';# Created: 2018-12-11
+our $VERSION = '1.3.1';# Created: 2018-12-11
 
 our %OPT = (
     force_update => 0,
@@ -307,6 +307,7 @@ package Image {
         $key //= $self->key;
         my ($a, $b) = ($key, '');
         $b = $1 if $a =~ s/:([\w][\w.-]{0,127})$//;
+        $b //= $self->_makefile_tag();
         my @path = split /\//, $a;
         my $c = pop @path;
         my $rv = {
@@ -335,6 +336,11 @@ package Image {
         return "$rev.$upd";
     }
 
+    sub _makefile_tag($self) {
+        my $makefile = eval { scalar main::cat($self->builddir() . "/Makefile") } || '';
+        return ( ($makefile =~ /^TAG\s*=\s*(\S+)$/m) ? $1 : "latest" );
+    }
+
     sub labels($self) {
         my $r = $self->rc;
         my @lab;
@@ -342,12 +348,7 @@ package Image {
             if ($_ eq '<VERSION>') {
                 push @lab, "$r:r" . $self->version;
             } elsif ($_ eq '<MAKETAG>') {
-                my $makefile = scalar main::cat($self->builddir() . "/Makefile");
-                if ($makefile =~ /^TAG\s*=\s*(\S+)$/m) {
-                    push @lab, "$r:$1";
-                } else {
-                    push @lab, "$r:latest";
-                }
+                push @lab, "$r:" . $self->_makefile_tag();
             } elsif (/</) {
                 die "Unknown tags directive: '$_'";
             } else {
