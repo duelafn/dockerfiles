@@ -1,5 +1,5 @@
 
-FROM debian:buster
+FROM debian:bullseye
 MAINTAINER Dean Serenevy <dean@serenevy.net>
 
 # CONFIGURATION
@@ -39,6 +39,7 @@ RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) --
     bash \
     bison \
     bzip2 \
+    ca-certificates \
     flex \
     g++ \
     g++-multilib \
