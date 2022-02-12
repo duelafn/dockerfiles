@@ -359,7 +359,7 @@ sub _testparm {
     my $log_level;
     for (split /\n/, join "", @_) {
         $section = $1   if /^\s*\[(.+?)\]\s*$/;
-        $log_level = $1 if ($section eq 'global' and /^\s*(log\s+level\s+=.+)/);
+        $log_level = $1 if ($section eq 'global' and /^\s*(log\s+level\s*=.+)/);
     }
     if ($log_level) {
         my @rv = split /\n/, scalar _safe_pipe([ testparm => -s => $fh->filename ]);
