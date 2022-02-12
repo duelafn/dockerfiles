@@ -353,6 +353,21 @@ sub _testparm {
     my $fh = File::Temp->new;
     print $fh @_;
     $fh->flush;
+    # Alas, testparm clobbers the "log level" setting for some reason.
+    # Copy it manually.
+    my $section = '';
+    my $log_level;
+    for (split /\n/, join "", @_) {
+        $section = $1   if /^\s*\[(.+?)\]\s*$/;
+        $log_level = $1 if ($section eq 'global' and /^\s*(log\s+level\s+=.+)/);
+    }
+    if ($log_level) {
+        my @rv = split /\n/, scalar _safe_pipe([ testparm => -s => $fh->filename ]);
+        for my $i (0..$#rv) {
+            splice @rv, $i+1, 0, "        $log_level" if $rv[$i] eq '[global]';
+        }
+        return join("\n", @rv);
+    }
     return scalar _safe_pipe([ testparm => -s => $fh->filename ]);
 }
 
