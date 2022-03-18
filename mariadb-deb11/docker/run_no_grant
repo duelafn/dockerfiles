@@ -1,0 +1,9 @@
+#!/bin/bash
+VERSION='0.1.0';# Created: 2015-05-20
+set -o nounset     # Die if any variable is unset
+set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+
+VOLUME=/opt/mariadb
+DATA_DIR="$VOLUME/data"
+
+exec /usr/bin/mariadbd-safe --skip-grant-tables --datadir="$DATA_DIR"
