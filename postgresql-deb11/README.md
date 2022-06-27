@@ -55,7 +55,7 @@ Remember to execute commands as the `postgres` user when connecting.
 
     docker exec -it -u postgres CONTAINER-NAME createuser ...
     docker exec -it -u postgres CONTAINER-NAME createdb   ...
-    docker exec -it -u postgres CONTAINER-NAME pg_dumpall > backup.sql
+    docker exec -i  -u postgres CONTAINER-NAME pg_dumpall > backup.sql
 
 
 Volume Layout
