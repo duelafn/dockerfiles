@@ -1,6 +1,6 @@
 
-# php7.3
-FROM debian:buster
+# php7.4
+FROM debian:bullseye
 MAINTAINER Dean Serenevy <dean@serenevy.net>
 
 
@@ -46,8 +46,8 @@ RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) --
 RUN \
  rm -f /etc/apache2/sites-enabled/000-default.conf && \
  ln -s /opt/timeclock/etc/site.conf /etc/apache2/sites-enabled/timeclock.conf && \
- sed -i '/^;\?date\.timezone/cdate.timezone = "'$TZ'"'   /etc/php/7.3/apache2/php.ini && \
- sed -i '/^;\?sendmail_path/csendmail_path = /usr/bin/msmtp -t' /etc/php/7.3/apache2/php.ini && \
+ sed -i '/^;\?date\.timezone/cdate.timezone = "'$TZ'"'   /etc/php/7.4/apache2/php.ini && \
+ sed -i '/^;\?sendmail_path/csendmail_path = /usr/bin/msmtp -t' /etc/php/7.4/apache2/php.ini && \
  sed -i '/pattern="PS/d'  /etc/ImageMagick-6/policy.xml && \
  ln -s /opt/timeclock/etc/msmtprc /etc/msmtprc
 

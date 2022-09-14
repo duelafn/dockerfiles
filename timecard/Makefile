@@ -1,6 +1,7 @@
 
 CONTAINER=timeclock
 REPOSITORY=cmminc/${CONTAINER}
+TAG=deb11
 
 LOCALENV=../_includes/05_localenv.docker
 
