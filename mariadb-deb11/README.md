@@ -20,6 +20,13 @@ Database socket at /opt/mariadb/socket/mariadbd.sock
 Administration (root) connection info in /opt/mariadb/etc/admin.cnf
 
 
+Upgrading
+=========
+
+Debian 11 no longer uses the admin.cnf connection permission file. Instead,
+it uses authorized local users.
+
+
 Docker Scripts
 ==============
 
@@ -34,10 +41,10 @@ enabled to work properly.
 
     docker exec ... /docker/stop
 
-    docker exec ... /docker/mariadb
-    docker exec ... /docker/mariadb-admin
-    docker exec ... /docker/mariadb-dump
+    docker exec -u mysql ... /docker/mariadb
+    docker exec -u mysql ... /docker/mariadb-admin
+    docker exec -u mysql ... /docker/mariadb-dump
 
 So, for example, a backup can be performed using:
 
-    docker exec -it osticket-data /docker/mariadb-dump --all-databases --single-transaction | gzip -c > osticket_2015-12-05.sql.gz
+    docker exec -u mysql -it osticket-data /docker/mariadb-dump --all-databases --single-transaction | gzip -c > osticket_2015-12-05.sql.gz
