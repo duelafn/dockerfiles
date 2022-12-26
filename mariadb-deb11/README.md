@@ -24,7 +24,7 @@ Upgrading
 =========
 
 Debian 11 no longer uses the admin.cnf connection permission file. Instead,
-it uses authorized local users.
+it uses an authorized mysql system user.
 
 
 Docker Scripts
