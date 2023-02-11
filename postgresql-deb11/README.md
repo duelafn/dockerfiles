@@ -74,8 +74,8 @@ Default Settings
     listen_addresses = '*'
     ssl = false
 
-These can be changed by modifying `$VOLUME/conf/main/postgresql.conf` after
-first run.
+These can be changed by modifying `$VOLUME/conf/main/conf.d/01-docker.conf`
+after first run or by creating your own override file in conf.d.
 
 Docker Scripts
 ==============
