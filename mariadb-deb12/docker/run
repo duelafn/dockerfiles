@@ -1,0 +1,43 @@
+#!/bin/bash
+set -o nounset     # Die if any variable is unset
+set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+
+VOLUME=/opt/mariadb
+MDBUSER=mysql
+
+DATA_DIR="$VOLUME/data"
+CONF_DIR="$VOLUME/etc/mariadb.conf.d"
+
+MARIADBARGS=( --datadir="$DATA_DIR" )
+
+install -d -o $MDBUSER -g root  "$DATA_DIR"
+install -d -o root     -g root  "$CONF_DIR"
+
+do_query() { echo "$1" | mariadb; }
+
+[ -f "$CONF_DIR/00-default.cnf" ] || cat <<EOF >"$CONF_DIR/00-default.cnf"
+# MariaDB local configuration base
+#
+# Do not delete this file. If you do, it will be re-created the next time
+# the container is started. Instead, modify it or else create new files in
+# this folder that override this one.
+
+[server]
+bind_address = "0.0.0.0"
+
+[client-server]
+port = 3306
+
+# A suggested socket location for sharing between VMs or the host
+# socket = /opt/mariadb/socket/mariadb.sock
+EOF
+
+
+[ -d "$DATA_DIR/mysql" ] || (
+    echo "Installing MariaDB system tables in '$DATA_DIR' ..."
+    # for deb12: --skip-auth-anonymous-user
+    /usr/bin/mariadb-install-db --skip-test-db --datadir="$DATA_DIR" --user=$MDBUSER >/dev/null
+)
+
+echo "Start MariaDB"
+exec /usr/bin/mariadbd-safe "${MARIADBARGS[@]}"
