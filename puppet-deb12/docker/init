@@ -3,15 +3,16 @@ VERSION='0.1.0';# Created: 2015-05-20
 set -o nounset     # Die if any variable is unset
 set -o errexit     # set +e; COMMAND; set -e to temporarily disable
 
+ETC_DIR=/opt/puppet/etc
+install -d -o root   -g root   "$ETC_DIR"
+
 PUPPET_MAJOR=$(puppet --version | awk -F. '{print$1}')
 if [ "$PUPPET_MAJOR" != "7" ]; then
     echo "run script can only initialize settings for puppet 7"
     exit 1
 fi
 
-ETC_DIR=/opt/puppet/etc
-
-install -d -o root   -g root   "$ETC_DIR" "$ETC_DIR/default"
+install -d -o root   -g root   "$ETC_DIR/default"
 install -d -o puppet -g puppet /opt/puppet/lib /opt/puppet/log /opt/puppet/lib/yaml /opt/puppet/lib/yaml/facts
 
 for f in $(find /etc/puppet.dpkg -type f | sed 's/^\/etc\/puppet\.dpkg\///'); do
