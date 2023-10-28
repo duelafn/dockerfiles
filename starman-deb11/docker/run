@@ -10,4 +10,5 @@ chown www-data:www-data "$VOLUME/log"
 
 [ -e "$VOLUME/etc/starman.conf" ] || cp /docker/starman.conf.example "$VOLUME/etc/starman.conf"
 
-exec /docker/starman /docker/starman.conf "$VOLUME/etc/starman.conf"
+exec /usr/bin/perl -MPOSIX -e 'POSIX::setgid(0+getgrnam("www-data")); POSIX::setuid(0+getpwnam("www-data")); exec @ARGV' -- \
+     /docker/starman /docker/starman.conf "$VOLUME/etc/starman.conf"
