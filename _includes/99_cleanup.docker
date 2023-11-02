@@ -7,3 +7,6 @@ RUN [ -z "$APT_SPEEDUP"    ]  ||  rm -f "$APT_SPEEDUP"
 
 # Really bad idea to leave an ssh private key in the base image!
 RUN if [ -z "$SSH_SERVER_DIR" ]; then rm -f /etc/ssh/ssh_host_*; else cp /etc/ssh/sshd_config /etc/sshd_config.dpkg-dist ; rm -rf /etc/ssh ; ln -s "$SSH_SERVER_DIR" /etc/ssh; fi
+
+# No more eatmydata!
+ENV LD_PRELOAD=
