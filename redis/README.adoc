@@ -12,7 +12,7 @@ One may optionally create/modify the config file in VOLUME/etc/redis.conf
 
 == Container Execution
 
-    docker run --rm -h example.com -p 127.0.0.1:6379:6379 -v /src/redis:/opt/redis --name redis cmminc/redis:latest
+    docker run --rm -h example.com -p 127.0.0.1:6379:6379 -v /src/redis:/opt/redis --name redis cmminc/redis:deb12
 
 
 == Volume Layout

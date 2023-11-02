@@ -1,7 +1,7 @@
 
 CONTAINER=redis
 REPOSITORY=cmminc/${CONTAINER}
-TAG=deb11
+TAG=deb12
 
 LOCALENV=../_includes/05_localenv.docker
 

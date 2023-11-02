@@ -1,5 +1,5 @@
 
-FROM debian:bullseye
+FROM debian:bookworm
 MAINTAINER Dean Serenevy <dean@serenevy.net>
 
 # CONFIGURATION

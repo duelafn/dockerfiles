@@ -1,6 +1,7 @@
 
 CONTAINER=pioneers-server
 REPOSITORY=duelafn/${CONTAINER}
+TAG=deb12
 
 LOCALENV=../_includes/05_localenv.docker
 

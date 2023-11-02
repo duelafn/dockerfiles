@@ -1,12 +1,11 @@
 
-FROM debian:bullseye
+FROM debian:bookworm
 MAINTAINER Dean Serenevy <dean@serenevy.net>
 
 
 # CONFIGURATION
 #--------------
 VOLUME ["/opt/samba"]
-
 
 # BUILDING
 #---------

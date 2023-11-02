@@ -1,7 +1,7 @@
 
 CONTAINER=samba
 REPOSITORY=utgllc/${CONTAINER}
-TAG=deb11
+TAG=deb12
 
 LOCALENV=../_includes/05_localenv.docker
 
