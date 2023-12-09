@@ -3,7 +3,7 @@
 ENV DEBIAN_FRONTEND noninteractive
 
 # eatmydata!
-RUN apt-get update && apt-get install -y --no-install-recommends eatmydata && apt clean
+RUN apt-get update && apt-get install -y --no-install-recommends eatmydata && apt-get clean
 ENV LD_PRELOAD=libeatmydata.so
 
 # When configured, will disable dpkg fsync to speed things up - don't need
