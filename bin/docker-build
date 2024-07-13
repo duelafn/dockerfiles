@@ -446,11 +446,12 @@ package Image {
     sub list_files($self, $path='.') {
         my @path = ($path);
         push @path, $self->repository if $self->repository;
-        my $fname_base = ($self->repository =~ s/\//./gr) if $self->repository;
+        my $fname_base = '';
+        $fname_base = ($self->repository =~ s/\//./gr) if $self->repository;
         $fname_base .= ($fname_base ? "." : "") . $self->container;
         my $dir = join("/", @path);
         return unless opendir my($D), $dir;
-        return grep -f $_, map "$dir/$_", grep /^\Q$fname_base\E\W/, readdir $D;
+        return grep -f $_, map "$dir/$_", grep /^\Q$fname_base\E[^a-zA-Z0-9]/, readdir $D;
     }
 
     sub old_saves($self, $conf=undef) {
@@ -466,7 +467,10 @@ package Image {
         my $keep_time    = main::parse_date(($$conf{keep} || "1 day") . ' ago')->epoch;
         my ($major, $keep);
         for my $f (main::rnatsort($self->list_files($dirname))) {
-            next unless $f =~ /:(\w+\d+)/; # matches "(r1).x", ":(deb12)", ...
+            my (undef, undef, $fname) = main::splitpath($f);
+            # Match including tag up to first number "(...:r1).x", "(...:deb12)"
+            # OR, match up to date stamp for untagged files
+            next unless $fname =~ /^(.*:[a-zA-Z_]\d+)/ or $fname =~ /^(.*)_\d{4}-\d\d-\d\d/;
             my $M = $1;
             $major //= $M;
             $keep = 0;
