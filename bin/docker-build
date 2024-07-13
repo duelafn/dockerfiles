@@ -10,7 +10,7 @@ use strict; use warnings; use 5.020;
 
 use Getopt::Long qw/:config bundling/;
 use Hash::Util qw/ lock_keys /;
-our $VERSION = '1.3.1';# Created: 2018-12-11
+our $VERSION = '1.4.0';# Created: 2018-12-11
 
 our %OPT = (
     force_update => 0,
@@ -466,14 +466,14 @@ package Image {
         my $keep_time    = main::parse_date(($$conf{keep} || "1 day") . ' ago')->epoch;
         my ($major, $keep);
         for my $f (main::rnatsort($self->list_files($dirname))) {
-            next unless $f =~ /:r(\d+)/;
+            next unless $f =~ /:(\w+\d+)/; # matches "(r1).x", ":(deb12)", ...
             my $M = $1;
             $major //= $M;
             $keep = 0;
             $keep = 1 if $keep_time lt stat($f)->mtime;   # Too new, keep it
             $keep = 1 if $keep_history-- > 0;             # Keep minimum number
             $keep = 1 if $keep_minor-- > 0;               # Keep minimum number or minor versions
-            if ($M != $major) {
+            if ($M ne $major) {
                 if (--$keep_major > 0) {
                     $keep = 1;                            # Keep minimum number of major versions
                     $keep_minor = $$conf{minor} || 1;     # reset minor counter
