@@ -1,0 +1,6 @@
+#!/bin/sh
+PG_CTL="$(find /usr/lib/postgresql -name pg_ctl | tail -n1)"
+
+: ${PGDATA:=/opt/postgresql/data}
+
+sudo -u postgres "PGDATA=$PGDATA" $PG_CTL "$@"

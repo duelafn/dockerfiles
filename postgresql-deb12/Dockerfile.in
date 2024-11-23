@@ -1,0 +1,57 @@
+# postgresql 15
+FROM debian:bookworm
+MAINTAINER Dean Serenevy <dean@serenevy.net>
+
+# CONFIGURATION
+#--------------
+VOLUME ["/opt/postgresql"]
+
+# BUILDING
+#---------
+INCLUDE ../_includes/00_prepare.docker
+
+ENV UID_POSTGRES 202
+ENV GID_POSTGRES 202
+
+INCLUDE ../_includes/05_localenv.docker
+INCLUDE ../_includes/10_setup.docker
+
+# MAIN
+#-----
+RUN groupadd -g $GID_POSTGRES postgres
+RUN useradd --system                         \
+    --home /opt/postgresql                   \
+    --shell /bin/sh                          \
+    -M                                       \
+    --uid $UID_POSTGRES                      \
+    --gid $GID_POSTGRES                      \
+    --comment "PostgreSQL administrator,,,"  \
+    postgres
+
+RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) -- \
+ apt-get install -y --no-install-recommends \
+ postgresql \
+ sudo \
+ && apt-get clean \
+ && rm -rf /var/lib/postgresql \
+ && install -d -m 2775 -o postgres -g postgres /var/run/postgresql \
+ && rm -rf /var/lib/apt/lists/* /usr/share/doc/* /usr/share/man/*'
+
+RUN PG_ETC="$(find /etc/postgresql -maxdepth 1 -mindepth 1 -type d | tail -n1)"; mv $PG_ETC /etc/postgresql/tmpl; ln -s /opt/postgresql/conf $PG_ETC
+
+# RUN sed -i "/^#*stats_temp_directory[ =]/cstats_temp_directory = '/var/run/postgresql/stat_tmp'"  /etc/postgresql/tmpl/main/postgresql.conf
+RUN /bin/echo -e "listen_addresses = '*'\ndata_directory = '/opt/postgresql/data'\nssl = false" >> /etc/postgresql/tmpl/main/conf.d/01-docker.conf
+RUN perl -pi -e "s#/etc/ssl#/opt/postgresql/conf/ssl#"                                             /etc/postgresql/tmpl/main/postgresql.conf
+RUN perl -pi -e "s#/etc/postgresql/[\d.]+/#/opt/postgresql/conf/#"                                 /etc/postgresql/tmpl/main/postgresql.conf
+
+COPY docker /docker
+
+# CLEANUP
+#--------
+INCLUDE ../_includes/99_cleanup.docker
+
+# RUNNING
+#--------
+EXPOSE 5432
+
+CMD exec /docker/run
