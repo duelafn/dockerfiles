@@ -30,10 +30,17 @@ access across the network.
 To export the postgres, set `unix_socket_directories` in postgresql.conf to
 your desired location *in addition to* its default value. For example:
 
-    unix_socket_directories = '/var/run/postgresql,/opt/postgres/sock'
+    unix_socket_directories = '/var/run/postgresql,/opt/postgresql/sock'
 
-If you do not include the default path, then command-line actions such as
-`createdb` or `pg_dumpall` will not work.
+If you do not include the default path, then command-line actions such as `createdb`
+or `pg_dumpall` will not work. Additionally, you will need to edit pg_hba.conf and
+change the local user authentication method to password rather than peer:
+
+    sudo vim conf/main/pg_hba.conf
+    # Change (NOT THE "local all postgres peer" line!):
+    #     local   all   all        peer
+    # to
+    #     local   all   all        scram-sha-256
 
 ### network access
 
@@ -42,7 +49,7 @@ configuration (execute from within the volume path after the first run of
 the container). There is no need to expose the port 5432 if you are linking
 containers.
 
-    echo "host   all   all   samenet   md5" | sudo tee -a conf/main/pg_hba.conf
+    echo "host   all   all   samenet   scram-sha-256" | sudo tee -a conf/main/pg_hba.conf
 
 To permit external access, expose port 5432 and edit conf/main/pg_hba.conf
 appropriately.
