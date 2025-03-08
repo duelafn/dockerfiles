@@ -48,6 +48,6 @@ I try to make `/docker/run` perform initialization as needed, including
 initialization of reasonable config files when absent and creation of any
 required directories. The intent is to simply run the container on an empty
 directory for initial setup and just run the container on a configured
-directory for normal use. Occasionally, something will ened a bit more
-setup and will have a `/docker/init` script as well. Each directory's
-README will explain the required setup procedure.
+directory for normal use. Occasionally, something will need a bit more
+setup and will have a `/docker/init` or `/docker/upgrade` script as well. Each
+directory's README will explain the required setup procedure.
