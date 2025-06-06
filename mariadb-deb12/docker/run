@@ -8,9 +8,10 @@ MDBUSER=mysql
 DATA_DIR="$VOLUME/data"
 CONF_DIR="$VOLUME/etc/mariadb.conf.d"
 
-MARIADBARGS=( --datadir="$DATA_DIR" )
+MARIADBARGS=( --datadir="$DATA_DIR" --user="$MDBUSER" )
 
 install -d -o $MDBUSER -g root  "$DATA_DIR"
+install -d -o $MDBUSER -g root  "/run/mysqld"
 install -d -o root     -g root  "$CONF_DIR"
 
 do_query() { echo "$1" | mariadb; }
@@ -36,8 +37,8 @@ EOF
 [ -d "$DATA_DIR/mysql" ] || (
     echo "Installing MariaDB system tables in '$DATA_DIR' ..."
     # for deb12: --skip-auth-anonymous-user
-    /usr/bin/mariadb-install-db --skip-test-db --datadir="$DATA_DIR" --user=$MDBUSER >/dev/null
+    /usr/bin/mariadb-install-db --skip-test-db "${MARIADBARGS[@]}" >/dev/null
 )
 
 echo "Start MariaDB"
-exec /usr/bin/mariadbd-safe "${MARIADBARGS[@]}"
+exec /usr/bin/mariadbd-safe "${MARIADBARGS[@]}" --skip-syslog
