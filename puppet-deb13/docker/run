@@ -1,0 +1,51 @@
+#!/bin/bash
+VERSION='0.1.0';# Created: 2015-05-20
+set -o nounset     # Die if any variable is unset
+set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+shopt -s nullglob
+
+# Fix UID/GID if desired:
+perl -pi -E 's/^user:x:\K\d+:\d+:/$ENV{UID_PUPPET}:$ENV{GID_PUPPET}:/' /etc/passwd
+perl -pi -E 's/^user:x:\K\d+:/$ENV{GID_PUPPET}:/' /etc/group
+
+ETC_DIR=/opt/puppet/etc
+RUNTIME_DIRECTORY=/var/run/puppetserver
+mkdir -p "$RUNTIME_DIRECTORY"
+
+install -d -o puppet -g puppet /opt/puppet/log /opt/puppet/lib/yaml /opt/puppet/lib/yaml/facts
+
+for f in $(find /etc/puppet.dpkg -type f | sed 's/^\/etc\/puppet\.dpkg\///'); do
+    fdir="$(dirname "$f")"
+    [ -e "$ETC_DIR/$fdir" ] || mkdir -p "$ETC_DIR/$fdir"
+    [ -e "$ETC_DIR/$f" ]    || cp "/etc/puppet.dpkg/$f" "$ETC_DIR/$f"
+done
+
+source "$ETC_DIR/default/puppetserver"
+
+for f in "$ETC_DIR"/*.log; do
+    mv -f "$f" "$f.1"
+done
+
+# Helpful message for upgrades
+if (test -d /opt/puppet/environments && ! test -e /opt/puppet/code); then
+    echo "Puppet expects 'environments' and 'modules' folders to be in a 'code' subfolder"
+    exit 1
+fi
+
+[ -d "$ETC_DIR/code" ] || ( [ -d /opt/puppet/code ] && ln -sf ../code "$ETC_DIR/code" )
+[ -d "$ETC_DIR/code" ] || ln -sf .. "$ETC_DIR/code"
+
+chown $UID_PUPPET:$GID_PUPPET "$RUNTIME_DIRECTORY"
+export HOME=/opt/puppet/lib
+cd "$HOME"
+
+exec /usr/bin/perl -MPOSIX -e 'POSIX::setgid($ENV{GID_PUPPET}); POSIX::setuid($ENV{UID_PUPPET}); exec @ARGV' -- \
+     /usr/bin/java $JAVA_ARGS \
+     -Djruby.lib=/usr/share/jruby/lib \
+     -XX:+CrashOnOutOfMemoryError \
+     -XX:ErrorFile="/opt/puppet/log/puppetserver_err.log" \
+     -jar /usr/share/puppetserver/puppetserver.jar \
+     --config /etc/puppet/puppetserver/conf.d \
+     --bootstrap-config /etc/puppet/puppetserver/services.d \
+     --restart-file ${RUNTIME_DIRECTORY}/restart \
+     $TK_ARGS
