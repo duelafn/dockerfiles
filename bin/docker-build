@@ -290,9 +290,10 @@ sub ERROR { say STDERR BOLD(RED(join "", "ERROR: ", @_)) if $OPT{verbose} >= 0; 
 
 
 package Image {
+    use strict; use warnings;
     use Moose;
     use JSON;
-    use re 'taint'; use 5.020;
+    use re 'taint';
     use experimental 'signatures';
     use File::stat;
 
