@@ -1,7 +1,8 @@
 #!/usr/bin/perl -w
 # Copyright (C) 2018  Dean Serenevy
 # SPDX-License-Identifier: MIT
-use strict; use warnings; use 5.020;
+use strict; use warnings;
+use 5.028; use experimental 'signatures';
 
 # NOTE: Might be better in python. See:
 #    python3-docker - Python 3 wrapper to access docker.io's control socket [https://github.com/docker/docker-py]
@@ -119,9 +120,9 @@ __USAGE__
 
 use Carp;
 #BEGIN: BOLD, 1 line
-sub BOLD($) { my $x = shift; (defined $x and $x ne '') ? "\e[1m".$x."\e[22m" : '' }
+sub BOLD :prototype($) { my $x = shift; (defined $x and $x ne '') ? "\e[1m".$x."\e[22m" : '' }
 #BEGIN: RED, 1 line
-sub RED($) { my $x = shift; (defined $x and $x ne '') ? "\e[31m".$x."\e[39m" : '' }
+sub RED :prototype($) { my $x = shift; (defined $x and $x ne '') ? "\e[31m".$x."\e[39m" : '' }
 #BEGIN: parse_date
 sub parse_date {
   require Date::Manip;
@@ -248,7 +249,7 @@ sub trim {
 #END: trim
 
 #BEGIN: qbash
-sub qbash($) {
+sub qbash :prototype($) {
     state $unprintable = '[^\pL\pM\pN\pP\pS\pZ[:print:]\s]';
     require Encode;
     local $_ = shift;
@@ -281,7 +282,6 @@ use YAML::XS qw/ LoadFile /;
 use Moose::Util::TypeConstraints;
 subtype 'StringArray' => as 'ArrayRef[Str]';
 coerce 'StringArray'  => from 'Str' => via { [ $_ ] };
-use experimental 'signatures';
 
 sub INFO  { say join "", @_ if $OPT{verbose} >= 2; }
 sub WARN  { say BOLD(join "", @_) if $OPT{verbose} >= 1; }
