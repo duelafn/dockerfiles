@@ -1,5 +1,5 @@
 
-FROM debian:bookworm
+FROM debian:trixie
 MAINTAINER Dean Serenevy <dean@serenevy.net>
 
 
@@ -22,16 +22,14 @@ INCLUDE ../_includes/10_setup.docker
 
 # MAIN
 #-----
-RUN addgroup --gid $GID_GIT git
-RUN adduser                  \
-    --home /opt/git          \
-    --no-create-home         \
-    --shell /bin/dash        \
-    --uid $UID_GIT           \
-    --gid $GID_GIT           \
-    --gecos "Git Server,,,"  \
-    --disabled-password      \
-    --disabled-login         \
+RUN groupadd --gid $GID_GIT git
+RUN useradd                    \
+    -d /opt/git                \
+    --no-create-home           \
+    --shell /usr/sbin/nologin  \
+    --uid $UID_GIT             \
+    --gid $GID_GIT             \
+    --comment "Git Server,,,"  \
     git
 
 RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) -- \
@@ -42,7 +40,6 @@ RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) --
     sudo                  \
  && apt-get clean'
 
-RUN mkdir /var/run/sshd
 
 # CLEANUP
 #--------
