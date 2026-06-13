@@ -1,5 +1,5 @@
 
-FROM debian:bookworm
+FROM debian:trixie
 MAINTAINER Dean Serenevy <dean@serenevy.net>
 
 
@@ -20,7 +20,7 @@ INCLUDE ../_includes/10_setup.docker
 
 # MAIN
 #-----
-RUN addgroup --gid $GID_SAMBASHARE sambashare
+RUN groupadd --gid $GID_SAMBASHARE sambashare
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libio-prompt-perl \
