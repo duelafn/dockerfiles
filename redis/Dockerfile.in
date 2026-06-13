@@ -1,5 +1,5 @@
 
-FROM debian:bookworm
+FROM debian:trixie
 MAINTAINER Dean Serenevy <dean@serenevy.net>
 
 # CONFIGURATION
@@ -18,16 +18,14 @@ INCLUDE ../_includes/10_setup.docker
 
 # MAIN
 #-----
-RUN addgroup --gid $GID_REDIS redis
-RUN adduser                     \
-    --home /opt/redis           \
+RUN groupadd --gid $GID_REDIS redis
+RUN useradd --system            \
+    -d /opt/redis               \
     --no-create-home            \
-    --shell /bin/sh             \
+    --shell /usr/sbin/nologin   \
     --uid $UID_REDIS            \
     --gid $GID_REDIS            \
-    --gecos "Redis Server,,,"   \
-    --disabled-password         \
-    --disabled-login            \
+    --comment "Redis Server,,," \
     redis
 
 RUN bash -c 'apt-get update && xargs -a <(awk "/^\\s*[^#]/" /tmp/apt.install) -- \
