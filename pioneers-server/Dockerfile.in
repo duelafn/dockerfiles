@@ -1,5 +1,5 @@
 
-FROM debian:bookworm
+FROM debian:trixie
 MAINTAINER Dean Serenevy <dean@serenevy.net>
 
 
