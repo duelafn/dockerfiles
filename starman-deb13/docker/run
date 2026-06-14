@@ -1,0 +1,14 @@
+#!/bin/bash
+VERSION='0.1.0';# Created: 2016-01-09
+set -o nounset     # Die if any variable is unset
+set -o errexit     # set +e; COMMAND; set -e to temporarily disable
+
+VOLUME=/www
+
+mkdir -p "$VOLUME/etc" "$VOLUME/log" "$VOLUME/run"
+chown www-data:www-data "$VOLUME/log"
+
+[ -e "$VOLUME/etc/starman.conf" ] || cp /docker/starman.conf.example "$VOLUME/etc/starman.conf"
+
+exec /usr/bin/perl -MPOSIX -e 'POSIX::setgid(0+getgrnam("www-data")); POSIX::setuid(0+getpwnam("www-data")); exec @ARGV' -- \
+     /docker/starman /docker/starman.conf "$VOLUME/etc/starman.conf"
