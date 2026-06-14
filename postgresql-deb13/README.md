@@ -65,6 +65,37 @@ Remember to execute commands as the `postgres` user when connecting.
     docker exec -i  -u postgres CONTAINER-NAME pg_dumpall > backup.sql
 
 
+Container Upgrades
+------------------
+
+PostgreSQL major version upgrades can not be performed in-place. The [Pg docs][1]
+suggest a dump/restore cycle, pg_upgrade, or replication for upgrades. pg_upgrade
+requires access to both server binaries simultaneously which is inconvenient for a
+container upgrade so I recommend the dump/restore approach between two containers,
+
+1. Spin up the new version using a fresh (empty) volume.
+
+2. If needed, copy configuration changes to the new volume and restart (do not just
+   replace the config, postgres uses version numbers in paths in the config file).
+
+3. Stop using the old DB (e.g., shut down the web service so the DB does not change
+   during migration). Keep the old DB container running.
+
+4. Copy data to the new container. E.g.,
+
+       docker exec -i -u postgres OLD-NAME pg_dumpall \
+           | docker exec -i -u postgres NEW-NAME psql -d postgres
+
+5. Shut down the old container.
+
+6. If you haven't already, upgrade your md5 passwords to scram-sha-256
+
+7. Restart the front-end service pointing at the new container.
+
+
+[1]: https://www.postgresql.org/docs/current/upgrading.html
+
+
 Volume Layout
 =============
 
