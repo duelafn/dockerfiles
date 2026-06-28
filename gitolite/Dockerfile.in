@@ -26,7 +26,7 @@ RUN groupadd --gid $GID_GIT git
 RUN useradd                    \
     -d /opt/git                \
     --no-create-home           \
-    --shell /usr/sbin/nologin  \
+    --shell /bin/dash          \
     --uid $UID_GIT             \
     --gid $GID_GIT             \
     --comment "Git Server,,,"  \
