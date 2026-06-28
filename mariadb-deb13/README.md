@@ -24,15 +24,6 @@ Mariadb data dir is /opt/mariadb/data/
 Database socket at /opt/mariadb/socket/mariadbd.sock
 
 
-docker run --rm -v /opt/osticket/data:/opt/mariadb --name cc cmminc/mariadb:deb13
-docker run --rm -v /opt/timeclock/data:/opt/mariadb --name cc cmminc/mariadb:deb13
-
-docker exec -it cc mariadb --defaults-file=/opt/mariadb/etc/admin.cnf --socket=/opt/mariadb/socket/mariadb.sock
-GRANT ALL PRIVILEGES ON *.* TO root@localhost IDENTIFIED VIA unix_socket; FLUSH PRIVILEGES;
-docker exec -it cc mariadb-upgrade
-docker exec -it cc /docker/stop
-
-
 Upgrading
 =========
 
@@ -40,6 +31,12 @@ MariaDB recommends full dump and restore for major upgrades.
 
 Debian no longer uses the admin.cnf connection permission file. Instead,
 the root and mysql system users are authorized with full privileges.
+
+In-place upgrading using mariadb-upgrade can be done this way,
+
+    # Run as above
+    docker run --rm ...
+    docker exec -it myapp mariadb-upgrade
 
 
 Docker Scripts

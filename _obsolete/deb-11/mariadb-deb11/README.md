@@ -26,6 +26,14 @@ Upgrading
 Debian 11 no longer uses the admin.cnf connection permission file. Instead,
 it uses an authorized mysql system user.
 
+In-place upgrading using mariadb-upgrade can be done this way,
+
+    docker run --rm -v /srv/myapp:/opt/mariadb --name myapp cmminc/mariadb:deb11
+    docker exec -it myapp mariadb --defaults-file=/opt/mariadb/etc/admin.cnf --socket=/opt/mariadb/socket/mariadb.sock
+        GRANT ALL PRIVILEGES ON *.* TO root@localhost IDENTIFIED VIA unix_socket;
+        FLUSH PRIVILEGES;
+    docker exec -it myapp mariadb-upgrade
+
 
 Docker Scripts
 ==============
